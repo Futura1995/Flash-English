@@ -695,6 +695,7 @@ function nextPhrase() {
     const key = activeDeck;
     deckCounts[key] = (deckCounts[key] || 0) + 1;
     saveDeckCounts();
+    driveSave({ silent: true });
     showCompletion(key, deckCounts[key]);
   }
 }
