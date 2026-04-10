@@ -9,21 +9,20 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
-  .app{max-width:640px;margin:0 auto;padding:2rem 1rem}
-  h1{font-size:20px;font-weight:500;color:#1a1a1a}
-  .streak-bar{display:flex;align-items:center;justify-content:space-between;margin:0.75rem 0 1.25rem}
-  .streak-badge{display:flex;align-items:center;gap:6px;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:5px 14px;font-size:14px;font-weight:500;color:#c2410c}
+  .app{max-width:640px;margin:0 auto;padding:0.5rem 1rem}
+  .streak-bar{display:flex;align-items:center;justify-content:space-between;margin:0.4rem 0 0.6rem}
+  .streak-badge{display:flex;align-items:center;gap:6px;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:500;color:#c2410c}
   .streak-badge.zero{background:#f5f5f0;border-color:#e0e0d8;color:#888}
-  .streak-days{font-size:22px;font-weight:700;color:#ea580c}
-  .tab-bar{display:flex;gap:8px;margin-bottom:1.5rem;border-bottom:1px solid #e0e0d8}
-  .tab{padding:8px 16px;font-size:14px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .streak-days{font-size:18px;font-weight:700;color:#ea580c}
+  .tab-bar{display:flex;gap:4px;margin-bottom:0.75rem;border-bottom:1px solid #e0e0d8}
+  .tab{padding:6px 12px;font-size:13px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px}
   .tab.active{color:#1a1a1a;border-bottom:2px solid #1a1a1a;font-weight:500}
-  .card{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
-  .label{font-size:12px;color:#888;margin-bottom:6px}
-  .jp-sentence{font-size:24px;font-weight:500;line-height:1.5;margin-bottom:8px}
-  .badge{display:inline-block;font-size:11px;padding:2px 10px;border-radius:8px;background:#e8f0fe;color:#1a56db;margin-bottom:1rem}
-  .btn-row{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
-  button{padding:8px 16px;border-radius:8px;border:1px solid #d0d0c8;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;transition:background 0.15s}
+  .card{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:0.75rem;margin-bottom:0.6rem}
+  .label{font-size:11px;color:#888;margin-bottom:4px}
+  .jp-sentence{font-size:20px;font-weight:500;line-height:1.4;margin-bottom:4px}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:8px;background:#e8f0fe;color:#1a56db;margin-bottom:0.5rem}
+  .btn-row{display:flex;gap:8px;margin-bottom:0.6rem;flex-wrap:wrap}
+  button{padding:7px 14px;border-radius:8px;border:1px solid #d0d0c8;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;transition:background 0.15s}
   button:hover{background:#f0f0e8}
   button:disabled{opacity:0.4;cursor:not-allowed}
   .btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
@@ -32,28 +31,28 @@
   .btn-record.recording{background:#c0392b;color:#fff;border-color:#c0392b}
   .btn-import{background:#f0fdf4;color:#166534;border-color:#bbf7d0;width:100%}
   .btn-import:hover{background:#dcfce7}
-  textarea{width:100%;border:1px solid #d0d0c8;border-radius:8px;padding:10px 12px;font-size:15px;font-family:inherit;resize:vertical;min-height:80px;background:#fff}
+  textarea{width:100%;border:1px solid #d0d0c8;border-radius:8px;padding:8px 12px;font-size:15px;font-family:inherit;resize:none;height:60px;background:#fff}
   textarea:focus{outline:none;border-color:#888}
-  .nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+  .nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem}
   .counter{font-size:13px;color:#888}
-  .progress{height:3px;background:#e8e8e0;border-radius:2px;margin-bottom:1.5rem}
+  .progress{height:3px;background:#e8e8e0;border-radius:2px;margin-bottom:0.6rem}
   .progress-bar{height:100%;background:#1a1a1a;border-radius:2px;transition:width 0.3s}
-  .hint-box{background:#f8f8f0;border-radius:8px;padding:0.75rem 1rem;font-size:13px;color:#666;margin-bottom:1rem}
-  .feedback-box{background:#f8f8f0;border-radius:8px;padding:1rem;font-size:14px;line-height:1.8;white-space:pre-wrap}
+  .hint-box{background:#f8f8f0;border-radius:8px;padding:0.5rem 0.75rem;font-size:13px;color:#666;margin-bottom:0.6rem}
+  .feedback-box{font-size:14px;line-height:1.7;white-space:pre-wrap}
   .phrase-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid #e8e8e0;border-radius:8px;font-size:14px;margin-bottom:8px;background:#fff}
   .phrase-item .jp-small{color:#888;font-size:12px;margin-top:2px}
   input[type=text],input[type=password]{width:100%;border:1px solid #d0d0c8;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;background:#fff;margin-bottom:8px}
   input[type=text]:focus,input[type=password]:focus{outline:none;border-color:#888}
   select{width:100%;padding:8px 12px;border:1px solid #d0d0c8;border-radius:8px;font-size:14px;background:#fff;margin-bottom:8px}
-  .info{font-size:12px;color:#aaa;text-align:center;margin-top:8px}
+  .info{font-size:12px;color:#aaa;text-align:center;margin-top:6px}
   .section-title{font-size:14px;font-weight:500;margin-bottom:8px}
   .api-bar{background:#fffbe6;border:1px solid #ffe58f;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:13px}
   .api-bar.connected{background:#f6ffed;border-color:#b7eb8f}
   .drive-bar{background:#f0f4ff;border:1px solid #c7d7fd;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:13px}
   .drive-bar.connected{background:#f6ffed;border-color:#b7eb8f}
-  .error-box{background:#fff0f0;border:1px solid #ffa39e;border-radius:8px;padding:0.75rem 1rem;font-size:13px;color:#c0392b;margin-bottom:1rem}
+  .error-box{background:#fff0f0;border:1px solid #ffa39e;border-radius:8px;padding:0.6rem 0.75rem;font-size:13px;color:#c0392b;margin-bottom:0.6rem}
   .empty-state{text-align:center;padding:2rem;color:#888;font-size:14px}
-  .deck-card{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:1rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px}
+  .deck-card{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:0.6rem 0.75rem;margin-bottom:0.6rem;display:flex;align-items:center;gap:12px}
   .deck-card .label{margin-bottom:0;white-space:nowrap}
   .deck-card select{margin-bottom:0;flex:1}
   .import-section{border:2px dashed #d0d0c8;border-radius:12px;padding:1.25rem;margin-bottom:1rem;text-align:center}
@@ -62,6 +61,11 @@
   table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
   th,td{border:1px solid #bae6fd;padding:4px 8px;text-align:left}
   th{background:#e0f2fe;font-weight:500}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100}
+  .modal-box{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;background:#fff;border-radius:16px 16px 0 0;padding:1.25rem 1rem;z-index:101;max-height:75vh;overflow-y:auto}
+  .modal-border-correct{border-top:4px solid #22c55e}
+  .modal-border-wrong{border-top:4px solid #4285f4}
+  .modal-btns{display:flex;gap:8px;margin-top:1rem}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   .spinning{display:inline-block;animation:spin 1s linear infinite}
   @keyframes correct-pop{
@@ -82,39 +86,19 @@
 </head>
 <body>
 <div class="app">
-  <div style="display:flex;align-items:baseline;justify-content:space-between">
-    <h1>英会話 瞬間英作文</h1>
-  </div>
-
   <!-- 連続学習バー -->
   <div class="streak-bar">
     <div class="streak-badge zero" id="streak-badge">
       <span id="streak-display">今日から始めよう！</span>
     </div>
-    <div style="font-size:12px;color:#aaa" id="streak-date"></div>
-  </div>
-
-  <!-- APIキー設定バー -->
-  <div class="api-bar" id="api-bar">
-    <div style="font-weight:500;margin-bottom:6px">Gemini APIキーを設定してください</div>
-    <div style="display:flex;gap:8px">
-      <input type="password" id="api-key-input" placeholder="AIza..." style="margin-bottom:0;flex:1">
-      <button onclick="saveApiKey()" style="white-space:nowrap">保存</button>
-    </div>
-    <div style="font-size:11px;color:#888;margin-top:6px">キーはこのブラウザにのみ保存されます。外部には送信されません。</div>
-  </div>
-
-  <!-- Google Drive 同期バー -->
-  <div class="drive-bar" id="drive-bar">
-    <div style="font-weight:500;margin-bottom:6px">Google Drive でデータを同期（全端末で共有）</div>
-    <button onclick="driveSignIn()" id="btn-drive-signin" style="width:100%;background:#4285f4;color:#fff;border-color:#4285f4">Googleでサインイン</button>
-    <div style="font-size:11px;color:#888;margin-top:6px">フレーズ・連続記録をDriveに保存し、他の端末と共有できます。</div>
+    <div style="font-size:11px;color:#aaa" id="streak-date"></div>
   </div>
 
   <div class="tab-bar">
     <button class="tab active" onclick="switchTab('practice',event)">練習</button>
     <button class="tab" onclick="switchTab('phrases',event)">フレーズ管理</button>
     <button class="tab" onclick="switchTab('help',event)">使い方</button>
+    <button class="tab" onclick="switchTab('settings',event)">設定</button>
   </div>
 
   <!-- 練習タブ -->
@@ -152,18 +136,9 @@
       <div class="hint-box" id="hint-box" style="display:none"></div>
       <div class="error-box" id="error-box" style="display:none"></div>
 
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button onclick="toggleHint()" style="flex:1">ヒントを見る</button>
+      <div style="display:flex;gap:8px">
+        <button onclick="toggleHint()" style="flex:1">ヒント</button>
         <button class="btn-primary" onclick="requestReview()" id="btn-review" style="flex:2">Geminiに添削してもらう</button>
-      </div>
-      <div class="info">Powered by Google Gemini API（無料枠対応）</div>
-
-      <div id="feedback-area" style="display:none;margin-top:1rem">
-        <div class="card" style="border-left:3px solid #4285f4">
-          <div class="label" style="margin-bottom:8px">添削結果</div>
-          <div class="feedback-box" id="feedback-text"></div>
-        </div>
-        <button onclick="speakFeedback()" style="width:100%;margin-bottom:0.5rem">🔊 修正例を聞く</button>
       </div>
     </div>
 
@@ -227,6 +202,23 @@
     <div id="phrase-list"></div>
   </div>
 
+  <!-- 設定タブ -->
+  <div id="tab-settings" style="display:none">
+    <div class="api-bar" id="api-bar">
+      <div style="font-weight:500;margin-bottom:6px">Gemini APIキーを設定してください</div>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="api-key-input" placeholder="AIza..." style="margin-bottom:0;flex:1">
+        <button onclick="saveApiKey()" style="white-space:nowrap">保存</button>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:6px">キーはこのブラウザにのみ保存されます。外部には送信されません。</div>
+    </div>
+    <div class="drive-bar" id="drive-bar">
+      <div style="font-weight:500;margin-bottom:6px">Google Drive でデータを同期（全端末で共有）</div>
+      <button onclick="driveSignIn()" id="btn-drive-signin" style="width:100%;background:#4285f4;color:#fff;border-color:#4285f4">Googleでサインイン</button>
+      <div style="font-size:11px;color:#888;margin-top:6px">フレーズ・連続記録をDriveに保存し、他の端末と共有できます。</div>
+    </div>
+  </div>
+
   <!-- 使い方タブ -->
   <div id="tab-help" style="display:none">
     <div class="card">
@@ -268,6 +260,23 @@
     <div class="card">
       <div class="section-title" style="margin-bottom:8px">音声認識について</div>
       <p style="font-size:14px;line-height:1.8;color:#444">録音機能はChromeブラウザで最もよく動作します。Safari・Firefoxでは動作しない場合があります。その場合はテキスト入力をご利用ください。</p>
+    </div>
+  </div>
+</div>
+
+<!-- 添削結果モーダル -->
+<div id="feedback-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeFeedback()"></div>
+  <div class="modal-box" id="feedback-modal-box">
+    <div style="font-weight:500;margin-bottom:8px;font-size:15px">添削結果</div>
+    <div class="feedback-box" id="feedback-text"></div>
+    <button onclick="speakFeedback()" style="width:100%;margin-top:0.75rem">🔊 修正例を聞く</button>
+    <div class="modal-btns" id="feedback-correct-btns" style="display:none">
+      <button class="btn-primary" onclick="nextPhrase();closeFeedback()" style="flex:1">次の問題 →</button>
+      <button onclick="closeFeedback()" style="flex:1">もう一度</button>
+    </div>
+    <div class="modal-btns" id="feedback-wrong-btns" style="display:none">
+      <button onclick="closeFeedback()" style="width:100%">もう一度</button>
     </div>
   </div>
 </div>
@@ -550,7 +559,7 @@ function render() {
   document.getElementById('progress-bar').style.width = `${((idx + 1) / ps.length) * 100}%`;
   document.getElementById('user-input').value = '';
   document.getElementById('hint-box').style.display = 'none';
-  document.getElementById('feedback-area').style.display = 'none';
+  document.getElementById('feedback-modal').style.display = 'none';
   document.getElementById('error-box').style.display = 'none';
   hintVisible = false;
   lastModelAnswer = p.en || '';
@@ -627,7 +636,7 @@ async function requestReview() {
   const errBox = document.getElementById('error-box');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinning">↻</span> 添削中...';
-  document.getElementById('feedback-area').style.display = 'none';
+  document.getElementById('feedback-modal').style.display = 'none';
   errBox.style.display = 'none';
 
   const jp = ps[idx]?.jp || '';
@@ -652,9 +661,11 @@ async function requestReview() {
     if (m) lastModelAnswer = m[1].trim().replace(/^[「"]/,'').replace(/[」"]/,'');
     document.getElementById('feedback-text').textContent = text;
     const isCorrect = /【正解判定】\s*正解/.test(text);
-    const feedbackCard = document.querySelector('#feedback-area .card');
-    feedbackCard.style.borderLeft = isCorrect ? '3px solid #22c55e' : '3px solid #4285f4';
-    document.getElementById('feedback-area').style.display = 'block';
+    const box = document.getElementById('feedback-modal-box');
+    box.className = 'modal-box ' + (isCorrect ? 'modal-border-correct' : 'modal-border-wrong');
+    document.getElementById('feedback-correct-btns').style.display = isCorrect ? 'flex' : 'none';
+    document.getElementById('feedback-wrong-btns').style.display = isCorrect ? 'none' : 'flex';
+    document.getElementById('feedback-modal').style.display = 'block';
     if (isCorrect) { playSuccessSound(); showCorrectOverlay(); }
     recordStudy();
   } catch(e) {
@@ -845,6 +856,11 @@ function showCorrectOverlay() {
   el.innerHTML = '<div style="font-size:56px;line-height:1">○</div><div style="font-size:22px;margin-top:4px">正解！</div>';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 1600);
+}
+
+// ==================== モーダル ====================
+function closeFeedback() {
+  document.getElementById('feedback-modal').style.display = 'none';
 }
 
 // ==================== タブ切替 ====================
