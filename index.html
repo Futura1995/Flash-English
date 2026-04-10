@@ -67,6 +67,12 @@
   .modal-btns{display:flex;gap:8px;margin-top:1rem}
   .completion-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;background:rgba(0,0,0,0.5)}
   .completion-box{background:#fff;border-radius:20px;padding:2rem 1.5rem;text-align:center;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
+  .deck-picker-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:300;background:rgba(0,0,0,0.55)}
+  .deck-picker-box{background:#fff;border-radius:20px;padding:1.5rem 1.25rem;max-width:360px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:85vh;overflow-y:auto}
+  .deck-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 14px;border-radius:10px;border:1px solid #e0e0d8;background:#fff;font-size:14px;margin-bottom:8px;cursor:pointer;text-align:left}
+  .deck-btn:hover{background:#f5f5f0}
+  .deck-btn.recommended{border-color:#fed7aa;background:#fff7ed}
+  .deck-recommend-badge{font-size:11px;color:#c2410c;background:#ffedd5;border-radius:6px;padding:2px 7px;white-space:nowrap;margin-left:8px}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   .spinning{display:inline-block;animation:spin 1s linear infinite}
   @keyframes correct-pop{
@@ -263,6 +269,15 @@
   </div>
 </div>
 
+<!-- デッキ選択モーダル（起動時） -->
+<div id="deck-picker-modal" class="deck-picker-modal" style="display:none">
+  <div class="deck-picker-box">
+    <div style="font-size:18px;font-weight:700;margin-bottom:4px">今日は何を学習する？</div>
+    <div style="font-size:12px;color:#aaa;margin-bottom:16px">デッキを選んでスタート</div>
+    <div id="deck-picker-list"></div>
+  </div>
+</div>
+
 <!-- デッキ完了モーダル -->
 <div id="completion-modal" class="completion-modal" style="display:none">
   <div class="completion-box">
@@ -304,12 +319,19 @@ let hintVisible = false;
 let lastModelAnswer = '';
 let apiKey = '';
 let deckCounts = {};
+let deckCorrects = {};
 
 function loadDeckCounts() {
   try { return JSON.parse(localStorage.getItem('deck_counts') || '{}'); } catch(e) { return {}; }
 }
 function saveDeckCounts() {
   try { localStorage.setItem('deck_counts', JSON.stringify(deckCounts)); } catch(e) {}
+}
+function loadDeckCorrects() {
+  try { return JSON.parse(localStorage.getItem('deck_corrects') || '{}'); } catch(e) { return {}; }
+}
+function saveDeckCorrects() {
+  try { localStorage.setItem('deck_corrects', JSON.stringify(deckCorrects)); } catch(e) {}
 }
 
 // ==================== Google Drive ====================
@@ -379,7 +401,8 @@ async function driveSave(opts = {}) {
     phrases: allPhrases.filter(p => !p.def),
     streak: loadStreak(),
     activeDeck,
-    deckCounts
+    deckCounts,
+    deckCorrects
   });
   const meta = JSON.stringify({name: DRIVE_FILENAME, mimeType: 'application/json'});
   const body = new FormData();
@@ -446,6 +469,12 @@ async function driveLoad() {
     });
     saveDeckCounts();
   }
+  if (data.deckCorrects) {
+    Object.entries(data.deckCorrects).forEach(([k, v]) => {
+      deckCorrects[k] = Math.max(deckCorrects[k] || 0, v);
+    });
+    saveDeckCorrects();
+  }
 
   renderStreak();
   renderDeckSelector();
@@ -487,9 +516,11 @@ async function driveLoad() {
   } catch(e) {}
 
   deckCounts = loadDeckCounts();
+  deckCorrects = loadDeckCorrects();
   renderStreak();
   renderDeckSelector();
   render();
+  showDeckPicker();
 })();
 
 // ==================== 日付（午前3時基準） ====================
@@ -726,7 +757,12 @@ async function requestReview() {
     document.getElementById('feedback-correct-btns').style.display = isCorrect ? 'flex' : 'none';
     document.getElementById('feedback-wrong-btns').style.display = isCorrect ? 'none' : 'flex';
     document.getElementById('feedback-modal').style.display = 'block';
-    if (isCorrect) { playSuccessSound(); showCorrectOverlay(); }
+    if (isCorrect) {
+      playSuccessSound();
+      showCorrectOverlay();
+      deckCorrects[activeDeck] = (deckCorrects[activeDeck] || 0) + 1;
+      saveDeckCorrects();
+    }
     recordStudy();
   } catch(e) {
     errBox.textContent = 'エラー: ' + e.message;
@@ -924,6 +960,77 @@ function showCorrectOverlay() {
   el.innerHTML = '<div style="font-size:56px;line-height:1">○</div><div style="font-size:22px;margin-top:4px">正解！</div>';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 1600);
+}
+
+// ==================== デッキ選択モーダル ====================
+function showDeckPicker() {
+  const decks = getDecks().filter(d => d !== 'すべて');
+  if (decks.length === 0) return;
+
+  // おすすめスコア計算（低いほど未学習・未正解 = おすすめ）
+  // スコア = 完走回数×10 + 正解数×1（同率ならランダム）
+  const scored = decks.map(d => ({
+    name: d,
+    score: (deckCounts[d] || 0) * 10 + (deckCorrects[d] || 0),
+    rand: Math.random()
+  }));
+  scored.sort((a, b) => a.score - b.score || a.rand - b.rand);
+  const topScore = scored[0].score;
+  // 同率最低スコアのデッキからランダムで最大3つをおすすめ
+  const recommendedNames = new Set(
+    scored.filter(d => d.score === topScore).slice(0, 3).map(d => d.name)
+  );
+
+  const list = document.getElementById('deck-picker-list');
+  list.innerHTML = '';
+
+  // おすすめを先頭に、残りを後ろに並べる
+  const ordered = [
+    ...scored.filter(d => recommendedNames.has(d.name)),
+    ...scored.filter(d => !recommendedNames.has(d.name))
+  ];
+
+  if (recommendedNames.size > 0) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'font-size:11px;color:#aaa;margin-bottom:6px;font-weight:500';
+    sep.textContent = 'おすすめ';
+    list.appendChild(sep);
+  }
+
+  let pastRecommended = false;
+  ordered.forEach(d => {
+    if (!recommendedNames.has(d.name) && !pastRecommended) {
+      pastRecommended = true;
+      const sep = document.createElement('div');
+      sep.style.cssText = 'font-size:11px;color:#aaa;margin:10px 0 6px;font-weight:500';
+      sep.textContent = 'すべてのデッキ';
+      list.appendChild(sep);
+    }
+    const btn = document.createElement('button');
+    btn.className = 'deck-btn' + (recommendedNames.has(d.name) ? ' recommended' : '');
+    const phraseCount = allPhrases.filter(p => p.cat === d.name).length;
+    const stats = `完走${deckCounts[d.name]||0}回・正解${deckCorrects[d.name]||0}問`;
+    btn.innerHTML = `
+      <div>
+        <div style="font-weight:500">${d.name}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">${phraseCount}問 / ${stats}</div>
+      </div>
+      ${recommendedNames.has(d.name) ? '<span class="deck-recommend-badge">おすすめ ★</span>' : ''}
+    `;
+    btn.onclick = () => selectDeckFromPicker(d.name);
+    list.appendChild(btn);
+  });
+
+  document.getElementById('deck-picker-modal').style.display = 'flex';
+}
+
+function selectDeckFromPicker(deckName) {
+  document.getElementById('deck-picker-modal').style.display = 'none';
+  activeDeck = deckName;
+  try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
+  document.getElementById('deck-select').value = activeDeck;
+  idx = 0;
+  render();
 }
 
 // ==================== モーダル ====================
