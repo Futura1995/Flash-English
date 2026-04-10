@@ -66,6 +66,8 @@
   .modal-border-correct{border-top:4px solid #22c55e}
   .modal-border-wrong{border-top:4px solid #4285f4}
   .modal-btns{display:flex;gap:8px;margin-top:1rem}
+  .completion-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;background:rgba(0,0,0,0.5)}
+  .completion-box{background:#fff;border-radius:20px;padding:2rem 1.5rem;text-align:center;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
   @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   .spinning{display:inline-block;animation:spin 1s linear infinite}
   @keyframes correct-pop{
@@ -109,13 +111,6 @@
       <select id="deck-select" onchange="onDeckChange()"></select>
     </div>
 
-    <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
-    <div class="nav-row">
-      <button onclick="prevPhrase()">← 前へ</button>
-      <span class="counter" id="counter">- / -</span>
-      <button onclick="nextPhrase()">次へ →</button>
-    </div>
-
     <div id="practice-content">
       <div class="card">
         <div class="label">この日本語を英語で言ってみましょう</div>
@@ -123,9 +118,13 @@
         <div class="jp-sentence" id="jp-sentence">-</div>
       </div>
 
-      <div class="btn-row">
-        <button onclick="speakModel()">🔊 手本を聞く</button>
-        <button id="btn-rec" class="btn-record" onclick="toggleRecord()">● 録音して話す</button>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:0.6rem">
+        <button onclick="prevPhrase()" style="flex-shrink:0;padding:6px 10px">←</button>
+        <div style="flex:1;min-width:0">
+          <div class="progress" style="margin-bottom:2px"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+          <div style="text-align:center;font-size:12px;color:#888"><span class="counter" id="counter">- / -</span></div>
+        </div>
+        <button onclick="nextPhrase()" style="flex-shrink:0;padding:6px 10px">→</button>
       </div>
 
       <div class="card">
@@ -136,10 +135,11 @@
       <div class="hint-box" id="hint-box" style="display:none"></div>
       <div class="error-box" id="error-box" style="display:none"></div>
 
-      <div style="display:flex;gap:8px">
-        <button onclick="toggleHint()" style="flex:1">ヒント</button>
-        <button class="btn-primary" onclick="requestReview()" id="btn-review" style="flex:2">Geminiに添削してもらう</button>
+      <div style="display:flex;gap:8px;margin-bottom:0.6rem">
+        <button onclick="toggleHint()" style="flex:1">ヒント 🔊</button>
+        <button id="btn-rec" class="btn-record" onclick="toggleRecord()" style="flex:2">● 録音</button>
       </div>
+      <button class="btn-primary" onclick="requestReview()" id="btn-review" style="width:100%">AI添削</button>
     </div>
 
     <div id="practice-empty" class="empty-state" style="display:none">
@@ -264,6 +264,18 @@
   </div>
 </div>
 
+<!-- デッキ完了モーダル -->
+<div id="completion-modal" class="completion-modal" style="display:none">
+  <div class="completion-box">
+    <div style="font-size:48px;margin-bottom:8px">🎉</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px">今日の学習終了！</div>
+    <div style="font-size:14px;color:#666;margin-bottom:4px" id="completion-deck-name"></div>
+    <div style="font-size:28px;font-weight:700;color:#ea580c;margin:12px 0" id="completion-count"></div>
+    <div style="font-size:13px;color:#888;margin-bottom:1.25rem">回完走</div>
+    <button class="btn-primary" onclick="closeCompletion()" style="width:100%">続ける</button>
+  </div>
+</div>
+
 <!-- 添削結果モーダル -->
 <div id="feedback-modal" style="display:none">
   <div class="modal-overlay" onclick="closeFeedback()"></div>
@@ -304,6 +316,14 @@ let isRec = false;
 let hintVisible = false;
 let lastModelAnswer = '';
 let apiKey = '';
+let deckCounts = {};
+
+function loadDeckCounts() {
+  try { return JSON.parse(localStorage.getItem('deck_counts') || '{}'); } catch(e) { return {}; }
+}
+function saveDeckCounts() {
+  try { localStorage.setItem('deck_counts', JSON.stringify(deckCounts)); } catch(e) {}
+}
 
 // ==================== Google Drive ====================
 const DRIVE_CLIENT_ID = '215427701106-o2c6h6ieh22s2q70hfa0e13qljmcu2na.apps.googleusercontent.com';
@@ -368,7 +388,8 @@ async function driveSave() {
   const payload = JSON.stringify({
     phrases: allPhrases.filter(p => !p.def),
     streak: loadStreak(),
-    activeDeck
+    activeDeck,
+    deckCounts
   });
   const meta = JSON.stringify({name: DRIVE_FILENAME, mimeType: 'application/json'});
   const body = new FormData();
@@ -426,6 +447,14 @@ async function driveLoad() {
     try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
   }
 
+  // デッキ完走カウント（リモートとマージ：大きい方を優先）
+  if (data.deckCounts) {
+    Object.entries(data.deckCounts).forEach(([k, v]) => {
+      deckCounts[k] = Math.max(deckCounts[k] || 0, v);
+    });
+    saveDeckCounts();
+  }
+
   renderStreak();
   renderDeckSelector();
   idx = 0;
@@ -453,6 +482,7 @@ async function driveLoad() {
     if (d) activeDeck = d;
   } catch(e) {}
 
+  deckCounts = loadDeckCounts();
   renderStreak();
   renderDeckSelector();
   render();
@@ -568,9 +598,16 @@ function render() {
 function nextPhrase() {
   const ps = getActivePhrases();
   if (ps.length === 0) return;
+  const isLast = (idx === ps.length - 1);
   idx = (idx + 1) % ps.length;
   render();
   recordStudy();
+  if (isLast) {
+    const key = activeDeck;
+    deckCounts[key] = (deckCounts[key] || 0) + 1;
+    saveDeckCounts();
+    showCompletion(key, deckCounts[key]);
+  }
 }
 
 function prevPhrase() {
@@ -628,15 +665,20 @@ function toggleRecord() {
 function stopRec() {
   isRec = false;
   const b = document.getElementById('btn-rec');
-  if (b) { b.textContent = '● 録音して話す'; b.classList.remove('recording'); }
+  if (b) { b.textContent = '● 録音'; b.classList.remove('recording'); }
 }
 
 function toggleHint() {
   const ps = getActivePhrases();
   const box = document.getElementById('hint-box');
   hintVisible = !hintVisible;
-  if (hintVisible && ps[idx]) { box.textContent = 'ヒント: ' + ps[idx].en; box.style.display = 'block'; }
-  else { box.style.display = 'none'; }
+  if (hintVisible && ps[idx]) {
+    box.textContent = 'ヒント: ' + ps[idx].en;
+    box.style.display = 'block';
+    speakModel();
+  } else {
+    box.style.display = 'none';
+  }
 }
 
 // ==================== Gemini添削 ====================
@@ -687,7 +729,7 @@ async function requestReview() {
     errBox.style.display = 'block';
   }
   btn.disabled = false;
-  btn.textContent = 'Geminiに添削してもらう';
+  btn.textContent = 'AI添削';
 }
 
 // ==================== APIキー ====================
@@ -875,6 +917,16 @@ function showCorrectOverlay() {
 // ==================== モーダル ====================
 function closeFeedback() {
   document.getElementById('feedback-modal').style.display = 'none';
+}
+
+function showCompletion(deck, count) {
+  document.getElementById('completion-deck-name').textContent = `「${deck}」デッキ`;
+  document.getElementById('completion-count').textContent = count;
+  document.getElementById('completion-modal').style.display = 'flex';
+}
+
+function closeCompletion() {
+  document.getElementById('completion-modal').style.display = 'none';
 }
 
 // ==================== タブ切替 ====================
