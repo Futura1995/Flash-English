@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英会話 瞬間英作文アプリ</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.3/dist/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
+  .app{max-width:640px;margin:0 auto;padding:0.5rem 1rem}
+  .streak-bar{display:flex;align-items:center;justify-content:space-between;margin:0.4rem 0 0.6rem}
+  .streak-badge{display:flex;align-items:center;gap:6px;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:500;color:#c2410c}
+  .streak-badge.zero{background:#f5f5f0;border-color:#e0e0d8;color:#888}
+  .streak-days{font-size:18px;font-weight:700;color:#ea580c}
+  .tab-bar{display:flex;gap:4px;margin-bottom:0.75rem;border-bottom:1px solid #e0e0d8}
+  .tab{padding:6px 12px;font-size:13px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.active{color:#1a1a1a;border-bottom:2px solid #1a1a1a;font-weight:500}
+  .card{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:0.75rem;margin-bottom:0.6rem}
+  .label{font-size:11px;color:#888;margin-bottom:4px}
+  .jp-sentence{font-size:20px;font-weight:500;line-height:1.4;margin-bottom:4px}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:8px;background:#e8f0fe;color:#1a56db;margin-bottom:0.5rem}
+  .btn-row{display:flex;gap:8px;margin-bottom:0.6rem;flex-wrap:wrap}
+  button{padding:7px 14px;border-radius:8px;border:1px solid #d0d0c8;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;transition:background 0.15s}
+  button:hover{background:#f0f0e8}
+  button:disabled{opacity:0.4;cursor:not-allowed}
+  .btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+  .btn-primary:hover{background:#333;color:#fff}
+  .btn-record{background:#fff0f0;color:#c0392b;border-color:#f0c0c0}
+  .btn-record.recording{background:#c0392b;color:#fff;border-color:#c0392b}
+  .btn-import{background:#f0fdf4;color:#166534;border-color:#bbf7d0;width:100%}
+  .btn-import:hover{background:#dcfce7}
+  textarea{width:100%;border:1px solid #d0d0c8;border-radius:8px;padding:8px 12px;font-size:15px;font-family:inherit;resize:none;height:60px;background:#fff}
+  textarea:focus{outline:none;border-color:#888}
+  .nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem}
+  .counter{font-size:13px;color:#888}
+  .progress{height:3px;background:#e8e8e0;border-radius:2px;margin-bottom:0.6rem}
+  .progress-bar{height:100%;background:#1a1a1a;border-radius:2px;transition:width 0.3s}
+  .hint-box{background:#f8f8f0;border-radius:8px;padding:0.5rem 0.75rem;font-size:13px;color:#666;margin-bottom:0.6rem}
+  .feedback-box{font-size:14px;line-height:1.7;white-space:pre-wrap}
+  .phrase-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid #e8e8e0;border-radius:8px;font-size:14px;margin-bottom:8px;background:#fff}
+  .phrase-item .jp-small{color:#888;font-size:12px;margin-top:2px}
+  input[type=text],input[type=password]{width:100%;border:1px solid #d0d0c8;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;background:#fff;margin-bottom:8px}
+  input[type=text]:focus,input[type=password]:focus{outline:none;border-color:#888}
+  select{width:100%;padding:8px 12px;border:1px solid #d0d0c8;border-radius:8px;font-size:14px;background:#fff;margin-bottom:8px}
+  .info{font-size:12px;color:#aaa;text-align:center;margin-top:6px}
+  .section-title{font-size:14px;font-weight:500;margin-bottom:8px}
+  .api-bar{background:#fffbe6;border:1px solid #ffe58f;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:13px}
+  .api-bar.connected{background:#f6ffed;border-color:#b7eb8f}
+  .drive-bar{background:#f0f4ff;border:1px solid #c7d7fd;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:13px}
+  .drive-bar.connected{background:#f6ffed;border-color:#b7eb8f}
+  .error-box{background:#fff0f0;border:1px solid #ffa39e;border-radius:8px;padding:0.6rem 0.75rem;font-size:13px;color:#c0392b;margin-bottom:0.6rem}
+  .empty-state{text-align:center;padding:2rem;color:#888;font-size:14px}
+  .deck-card{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:0.6rem 0.75rem;margin-bottom:0.6rem;display:flex;align-items:center;gap:12px}
+  .deck-card .label{margin-bottom:0;white-space:nowrap}
+  .deck-card select{margin-bottom:0;flex:1}
+  .import-section{border:2px dashed #d0d0c8;border-radius:12px;padding:1.25rem;margin-bottom:1rem;text-align:center}
+  .import-section input[type=file]{display:none}
+  .excel-format{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:0.75rem 1rem;font-size:13px;color:#0369a1;margin-top:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th,td{border:1px solid #bae6fd;padding:4px 8px;text-align:left}
+  th{background:#e0f2fe;font-weight:500}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100}
+  .modal-box{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;background:#fff;border-radius:16px 16px 0 0;padding:1.25rem 1rem;z-index:101;max-height:75vh;overflow-y:auto}
+  .modal-border-correct{border-top:4px solid #22c55e}
+  .modal-border-wrong{border-top:4px solid #4285f4}
+  .modal-btns{display:flex;gap:8px;margin-top:1rem}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  .spinning{display:inline-block;animation:spin 1s linear infinite}
+  @keyframes correct-pop{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(0.5)}
+    30%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
+    70%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1)}
+  }
+  .correct-overlay{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(255,255,255,0.95);border:6px solid #22c55e;
+    border-radius:50%;width:180px;height:180px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:28px;font-weight:700;color:#16a34a;z-index:9999;
+    pointer-events:none;animation:correct-pop 1.5s ease forwards;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 連続学習バー -->
+  <div class="streak-bar">
+    <div class="streak-badge zero" id="streak-badge">
+      <span id="streak-display">今日から始めよう！</span>
+    </div>
+    <div style="font-size:11px;color:#aaa" id="streak-date"></div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('practice',event)">練習</button>
+    <button class="tab" onclick="switchTab('phrases',event)">フレーズ管理</button>
+    <button class="tab" onclick="switchTab('help',event)">使い方</button>
+    <button class="tab" onclick="switchTab('settings',event)">設定</button>
+  </div>
+
+  <!-- 練習タブ -->
+  <div id="tab-practice">
+    <!-- 今日の気分・デッキ選択 -->
+    <div class="deck-card">
+      <div class="label">今日の気分</div>
+      <select id="deck-select" onchange="onDeckChange()"></select>
+    </div>
+
+    <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+    <div class="nav-row">
+      <button onclick="prevPhrase()">← 前へ</button>
+      <span class="counter" id="counter">- / -</span>
+      <button onclick="nextPhrase()">次へ →</button>
+    </div>
+
+    <div id="practice-content">
+      <div class="card">
+        <div class="label">この日本語を英語で言ってみましょう</div>
+        <div class="badge" id="category">-</div>
+        <div class="jp-sentence" id="jp-sentence">-</div>
+      </div>
+
+      <div class="btn-row">
+        <button onclick="speakModel()">🔊 手本を聞く</button>
+        <button id="btn-rec" class="btn-record" onclick="toggleRecord()">● 録音して話す</button>
+      </div>
+
+      <div class="card">
+        <div class="label">あなたの英訳（テキスト入力でも録音でも可）</div>
+        <textarea id="user-input" placeholder="ここに英語を入力、または上の録音ボタンを使ってください..."></textarea>
+      </div>
+
+      <div class="hint-box" id="hint-box" style="display:none"></div>
+      <div class="error-box" id="error-box" style="display:none"></div>
+
+      <div style="display:flex;gap:8px">
+        <button onclick="toggleHint()" style="flex:1">ヒント</button>
+        <button class="btn-primary" onclick="requestReview()" id="btn-review" style="flex:2">Geminiに添削してもらう</button>
+      </div>
+    </div>
+
+    <div id="practice-empty" class="empty-state" style="display:none">
+      <div style="font-size:32px;margin-bottom:8px">📭</div>
+      <div>このデッキにフレーズがありません</div>
+      <div style="margin-top:4px;font-size:12px">「フレーズ管理」からExcelをインポートするか、フレーズを追加してください</div>
+    </div>
+  </div>
+
+  <!-- フレーズ管理タブ -->
+  <div id="tab-phrases" style="display:none">
+    <!-- Excelインポート -->
+    <div class="card">
+      <div class="section-title">📥 Excelファイルからインポート</div>
+      <div style="margin-bottom:10px">
+        <div class="label">グループ名（省略時はファイル名を使用）</div>
+        <input type="text" id="import-group" placeholder="例：TOEIC単語、旅行英語">
+      </div>
+      <div class="import-section">
+        <div style="font-size:14px;color:#666;margin-bottom:10px">
+          .xlsx / .xls ファイルをドロップ、または選択
+        </div>
+        <label for="excel-input">
+          <button class="btn-import" onclick="document.getElementById('excel-input').click()">
+            📂 Excelファイルを選択
+          </button>
+        </label>
+        <input type="file" id="excel-input" accept=".xlsx,.xls" onchange="importExcel(event)">
+      </div>
+      <div class="excel-format">
+        <strong>Excelのフォーマット（1行目はヘッダー行、2行目から）</strong>
+        <table>
+          <tr><th>A列</th><th>B列</th><th>C列（省略可）</th></tr>
+          <tr><td>日本語</td><td>英語ヒント</td><td>カテゴリ</td></tr>
+          <tr><td>おはよう</td><td>Good morning</td><td>日常会話</td></tr>
+        </table>
+        <div style="margin-top:6px;color:#666">C列を省略すると、グループ名（またはファイル名）がカテゴリになります。</div>
+      </div>
+    </div>
+
+    <!-- 手動追加 -->
+    <div class="card">
+      <div class="section-title">オリジナルフレーズを手動追加</div>
+      <input type="text" id="add-jp" placeholder="日本語（例：ちょっと待ってください）">
+      <input type="text" id="add-en" placeholder="英語のヒント（省略可）">
+      <select id="add-cat">
+        <option>日常会話</option>
+        <option>ビジネス</option>
+        <option>旅行</option>
+        <option>カスタム</option>
+      </select>
+      <button class="btn-primary" style="width:100%" onclick="addPhrase()">追加する</button>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="section-title" style="margin-bottom:0">登録フレーズ一覧</div>
+      <select id="list-filter" onchange="renderList()" style="width:auto;margin-bottom:0;font-size:13px;padding:4px 8px"></select>
+    </div>
+    <div style="font-size:12px;color:#aaa;margin-bottom:8px">デフォルトフレーズは削除できません</div>
+    <div id="phrase-list"></div>
+  </div>
+
+  <!-- 設定タブ -->
+  <div id="tab-settings" style="display:none">
+    <div class="api-bar" id="api-bar">
+      <div style="font-weight:500;margin-bottom:6px">Gemini APIキーを設定してください</div>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="api-key-input" placeholder="AIza..." style="margin-bottom:0;flex:1">
+        <button onclick="saveApiKey()" style="white-space:nowrap">保存</button>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:6px">キーはこのブラウザにのみ保存されます。外部には送信されません。</div>
+    </div>
+    <div class="drive-bar" id="drive-bar">
+      <div style="font-weight:500;margin-bottom:6px">Google Drive でデータを同期（全端末で共有）</div>
+      <button onclick="driveSignIn()" id="btn-drive-signin" style="width:100%;background:#4285f4;color:#fff;border-color:#4285f4">Googleでサインイン</button>
+      <div style="font-size:11px;color:#888;margin-top:6px">フレーズ・連続記録をDriveに保存し、他の端末と共有できます。</div>
+    </div>
+  </div>
+
+  <!-- 使い方タブ -->
+  <div id="tab-help" style="display:none">
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px">基本的な使い方</div>
+      <ol style="font-size:14px;line-height:2;padding-left:1.25rem;color:#444">
+        <li>Google AI StudioでAPIキーを取得（無料）</li>
+        <li>画面上部のAPIキー欄に貼り付けて「保存」</li>
+        <li>「今日の気分」でデッキ（学習セット）を選択</li>
+        <li>日本語フレーズを見て英語を考える</li>
+        <li>テキスト入力または録音で英訳を入力</li>
+        <li>「Geminiに添削してもらう」でフィードバックを確認</li>
+      </ol>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px">連続学習日数について</div>
+      <p style="font-size:14px;line-height:1.8;color:#444">
+        毎日学習を続けると🔥連続日数がカウントされます。<br>
+        <strong>日付の切り替えは午前3時</strong>（深夜0〜2時台の学習は前日扱い）。<br>
+        フレーズのナビゲーションまたは添削を行うと学習記録されます。
+      </p>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px">Excelインポートについて</div>
+      <p style="font-size:14px;line-height:1.8;color:#444">
+        「フレーズ管理」タブからExcelファイルをインポートできます。<br>
+        A列：日本語、B列：英語ヒント、C列：カテゴリ（省略可）<br>
+        インポートしたグループは「今日の気分」のデッキとして選択できます。
+      </p>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px">APIキーの取得方法</div>
+      <p style="font-size:14px;line-height:1.8;color:#444">
+        1. <a href="https://aistudio.google.com" target="_blank" style="color:#1a56db">aistudio.google.com</a> にアクセス<br>
+        2. 左メニュー「Get API key」→「Create API key」<br>
+        3. 発行された「AIza...」のキーをコピー<br>
+        4. このアプリ上部の入力欄に貼り付けて保存
+      </p>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px">音声認識について</div>
+      <p style="font-size:14px;line-height:1.8;color:#444">録音機能はChromeブラウザで最もよく動作します。Safari・Firefoxでは動作しない場合があります。その場合はテキスト入力をご利用ください。</p>
+    </div>
+  </div>
+</div>
+
+<!-- 添削結果モーダル -->
+<div id="feedback-modal" style="display:none">
+  <div class="modal-overlay" onclick="closeFeedback()"></div>
+  <div class="modal-box" id="feedback-modal-box">
+    <div style="font-weight:500;margin-bottom:8px;font-size:15px">添削結果</div>
+    <div class="feedback-box" id="feedback-text"></div>
+    <button onclick="speakFeedback()" style="width:100%;margin-top:0.75rem">🔊 修正例を聞く</button>
+    <div class="modal-btns" id="feedback-correct-btns" style="display:none">
+      <button class="btn-primary" onclick="nextPhrase();closeFeedback()" style="flex:1">次の問題 →</button>
+      <button onclick="closeFeedback()" style="flex:1">もう一度</button>
+    </div>
+    <div class="modal-btns" id="feedback-wrong-btns" style="display:none">
+      <button onclick="closeFeedback()" style="width:100%">もう一度</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== データ ====================
+const DEFAULTS = [
+  {jp:"おはようございます。今日はいい天気ですね。",en:"Good morning. It's a nice day today, isn't it?",cat:"日常会話",def:true},
+  {jp:"すみません、この近くにコンビニはありますか？",en:"Excuse me, is there a convenience store near here?",cat:"日常会話",def:true},
+  {jp:"もう少しゆっくり話していただけますか？",en:"Could you speak a little more slowly, please?",cat:"日常会話",def:true},
+  {jp:"この料理、本当においしいですね！",en:"This dish is really delicious!",cat:"日常会話",def:true},
+  {jp:"今日は少し頭が痛くて、早退してもいいですか？",en:"I have a bit of a headache today. Would it be okay if I left early?",cat:"日常会話",def:true},
+  {jp:"週末は何か予定がありますか？",en:"Do you have any plans for the weekend?",cat:"日常会話",def:true},
+  {jp:"それについてもう少し詳しく教えてもらえますか？",en:"Could you tell me a little more about that?",cat:"日常会話",def:true},
+  {jp:"電車が遅れていて、10分ほど遅刻しそうです。",en:"The train is delayed, so I might be about 10 minutes late.",cat:"日常会話",def:true},
+  {jp:"この仕事、一緒に手伝ってもらえると助かります。",en:"It would really help if you could assist me with this task.",cat:"日常会話",def:true},
+  {jp:"お会いできて光栄です。よろしくお願いします。",en:"It's a pleasure to meet you. I look forward to working with you.",cat:"日常会話",def:true},
+];
+
+let allPhrases = [...DEFAULTS];
+let activeDeck = 'すべて';
+let idx = 0;
+let recog = null;
+let isRec = false;
+let hintVisible = false;
+let lastModelAnswer = '';
+let apiKey = '';
+
+// ==================== Google Drive ====================
+const DRIVE_CLIENT_ID = '215427701106-o2c6h6ieh22s2q70hfa0e13qljmcu2na.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_FILENAME = 'eikaiwa_data.json';
+let driveToken = null;
+let driveFileId = null;
+
+function driveSignIn() {
+  if (typeof google === 'undefined') { alert('Google認証ライブラリの読み込み中です。少し待ってから再度お試しください。'); return; }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (resp) => {
+      if (resp.error) { alert('サインインに失敗しました: ' + resp.error); return; }
+      driveToken = resp.access_token;
+      renderDriveBar(true);
+      await driveLoad();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function driveSignOut() {
+  if (driveToken) google.accounts.oauth2.revoke(driveToken);
+  driveToken = null;
+  driveFileId = null;
+  renderDriveBar(false);
+}
+
+function renderDriveBar(connected) {
+  const bar = document.getElementById('drive-bar');
+  if (connected) {
+    bar.className = 'drive-bar connected';
+    bar.innerHTML = `
+      <div style="color:#389e0d;font-weight:500;margin-bottom:6px">Google Drive 接続済み ✓</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="driveSave()" style="flex:1;background:#389e0d;color:#fff;border-color:#389e0d">↑ Driveに保存</button>
+        <button onclick="driveLoad()" style="flex:1">↓ Driveから読込</button>
+        <button onclick="driveSignOut()" style="color:#888;font-size:12px;padding:6px 10px">サインアウト</button>
+      </div>`;
+  } else {
+    bar.className = 'drive-bar';
+    bar.innerHTML = `
+      <div style="font-weight:500;margin-bottom:6px">Google Drive でデータを同期（全端末で共有）</div>
+      <button onclick="driveSignIn()" style="width:100%;background:#4285f4;color:#fff;border-color:#4285f4">Googleでサインイン</button>
+      <div style="font-size:11px;color:#888;margin-top:6px">フレーズ・連続記録をDriveに保存し、他の端末と共有できます。</div>`;
+  }
+}
+
+async function driveFindFile() {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name%3D'${DRIVE_FILENAME}'+and+trashed%3Dfalse&fields=files(id)`,
+    {headers: {Authorization: 'Bearer ' + driveToken}}
+  );
+  const data = await res.json();
+  return data.files?.[0]?.id || null;
+}
+
+async function driveSave() {
+  if (!driveToken) { alert('先にGoogleでサインインしてください'); return; }
+  const payload = JSON.stringify({
+    phrases: allPhrases.filter(p => !p.def),
+    streak: loadStreak(),
+    activeDeck
+  });
+  const meta = JSON.stringify({name: DRIVE_FILENAME, mimeType: 'application/json'});
+  const body = new FormData();
+  body.append('metadata', new Blob([meta], {type: 'application/json'}));
+  body.append('file', new Blob([payload], {type: 'application/json'}));
+
+  if (!driveFileId) driveFileId = await driveFindFile();
+
+  let res;
+  if (driveFileId) {
+    res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`, {
+      method: 'PATCH', headers: {Authorization: 'Bearer ' + driveToken}, body
+    });
+  } else {
+    res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST', headers: {Authorization: 'Bearer ' + driveToken}, body
+    });
+    const d = await res.json();
+    driveFileId = d.id;
+  }
+  if (res.ok) alert('✅ Driveに保存しました');
+  else alert('❌ 保存に失敗しました');
+}
+
+async function driveLoad() {
+  if (!driveToken) return;
+  if (!driveFileId) driveFileId = await driveFindFile();
+  if (!driveFileId) { alert('Driveにデータがありません。先にこの端末で「Driveに保存」してください。'); return; }
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+    headers: {Authorization: 'Bearer ' + driveToken}
+  });
+  if (!res.ok) { alert('❌ 読み込みに失敗しました'); return; }
+  const data = await res.json();
+
+  // フレーズをマージ（重複除去）
+  const existing = allPhrases.filter(p => !p.def);
+  const remote = data.phrases || [];
+  const merged = [...remote];
+  existing.forEach(e => {
+    if (!merged.some(r => r.jp === e.jp && r.en === e.en)) merged.push(e);
+  });
+  allPhrases = [...DEFAULTS, ...merged];
+  try { localStorage.setItem('eikaiwa_custom', JSON.stringify(merged)); } catch(e) {}
+
+  // streakは新しい方を優先
+  if (data.streak) {
+    const local = loadStreak();
+    const useRemote = !local.lastDate || data.streak.lastDate >= local.lastDate;
+    if (useRemote) try { localStorage.setItem('streak', JSON.stringify(data.streak)); } catch(e) {}
+  }
+
+  // デッキ
+  if (data.activeDeck) {
+    activeDeck = data.activeDeck;
+    try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
+  }
+
+  renderStreak();
+  renderDeckSelector();
+  idx = 0;
+  render();
+  alert('✅ Driveからデータを読み込みました');
+}
+
+// ==================== 初期化 ====================
+(function init() {
+  // カスタムフレーズ読み込み
+  try {
+    const s = localStorage.getItem('eikaiwa_custom');
+    if (s) allPhrases = [...DEFAULTS, ...JSON.parse(s)];
+  } catch(e) {}
+
+  // APIキー
+  try {
+    const k = localStorage.getItem('gemini_api_key');
+    if (k) { apiKey = k; showConnected(); }
+  } catch(e) {}
+
+  // 前回のデッキ
+  try {
+    const d = localStorage.getItem('activeDeck');
+    if (d) activeDeck = d;
+  } catch(e) {}
+
+  renderStreak();
+  renderDeckSelector();
+  render();
+})();
+
+// ==================== 日付（午前3時基準） ====================
+function getStudyDate() {
+  const now = new Date();
+  if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function prevDateStr(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// ==================== 連続学習 ====================
+function loadStreak() {
+  try {
+    return JSON.parse(localStorage.getItem('streak') || '{"count":0,"lastDate":""}');
+  } catch(e) { return {count:0, lastDate:''}; }
+}
+
+function recordStudy() {
+  const today = getStudyDate();
+  const s = loadStreak();
+  if (s.lastDate === today) return; // 今日はすでに記録済み
+  s.count = (s.lastDate === prevDateStr(today)) ? s.count + 1 : 1;
+  s.lastDate = today;
+  try { localStorage.setItem('streak', JSON.stringify(s)); } catch(e) {}
+  renderStreak();
+}
+
+function renderStreak() {
+  const s = loadStreak();
+  const badge = document.getElementById('streak-badge');
+  const disp = document.getElementById('streak-display');
+  const dateEl = document.getElementById('streak-date');
+
+  if (s.count > 0) {
+    badge.className = 'streak-badge';
+    disp.innerHTML = `🔥 <span class="streak-days">${s.count}</span>日連続学習中`;
+    dateEl.textContent = `最終学習: ${s.lastDate}`;
+  } else {
+    badge.className = 'streak-badge zero';
+    disp.textContent = '今日から始めよう！';
+    dateEl.textContent = '';
+  }
+}
+
+// ==================== デッキ ====================
+function getDecks() {
+  const cats = [...new Set(allPhrases.map(p => p.cat))];
+  return ['すべて', ...cats];
+}
+
+function getActivePhrases() {
+  if (activeDeck === 'すべて') return allPhrases;
+  return allPhrases.filter(p => p.cat === activeDeck);
+}
+
+function renderDeckSelector() {
+  const decks = getDecks();
+  const sel = document.getElementById('deck-select');
+  sel.innerHTML = decks.map(d =>
+    `<option value="${d}"${d === activeDeck ? ' selected' : ''}>${d}</option>`
+  ).join('');
+}
+
+function onDeckChange() {
+  activeDeck = document.getElementById('deck-select').value;
+  try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
+  idx = 0;
+  render();
+}
+
+// ==================== 練習レンダリング ====================
+function render() {
+  const ps = getActivePhrases();
+  const content = document.getElementById('practice-content');
+  const empty = document.getElementById('practice-empty');
+
+  if (ps.length === 0) {
+    content.style.display = 'none';
+    empty.style.display = 'block';
+    document.getElementById('counter').textContent = '- / -';
+    document.getElementById('progress-bar').style.width = '0%';
+    return;
+  }
+
+  content.style.display = 'block';
+  empty.style.display = 'none';
+
+  if (idx >= ps.length) idx = 0;
+  const p = ps[idx];
+  document.getElementById('jp-sentence').textContent = p.jp;
+  document.getElementById('category').textContent = p.cat;
+  document.getElementById('counter').textContent = `${idx + 1} / ${ps.length}`;
+  document.getElementById('progress-bar').style.width = `${((idx + 1) / ps.length) * 100}%`;
+  document.getElementById('user-input').value = '';
+  document.getElementById('hint-box').style.display = 'none';
+  document.getElementById('feedback-modal').style.display = 'none';
+  document.getElementById('error-box').style.display = 'none';
+  hintVisible = false;
+  lastModelAnswer = p.en || '';
+}
+
+function nextPhrase() {
+  const ps = getActivePhrases();
+  if (ps.length === 0) return;
+  idx = (idx + 1) % ps.length;
+  render();
+  recordStudy();
+}
+
+function prevPhrase() {
+  const ps = getActivePhrases();
+  if (ps.length === 0) return;
+  idx = (idx - 1 + ps.length) % ps.length;
+  render();
+  recordStudy();
+}
+
+// ==================== 音声 ====================
+function speakModel() {
+  const ps = getActivePhrases();
+  if (!ps[idx]) return;
+  const u = new SpeechSynthesisUtterance(ps[idx].en);
+  u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.speak(u);
+}
+
+function speakFeedback() {
+  if (!lastModelAnswer) return;
+  const u = new SpeechSynthesisUtterance(lastModelAnswer);
+  u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.speak(u);
+}
+
+function toggleRecord() {
+  if (isRec) { if (recog) recog.stop(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('音声認識はChromeブラウザで使用できます'); return; }
+  recog = new SR();
+  recog.lang = 'en-US';
+  recog.interimResults = false;
+  recog.onresult = e => { document.getElementById('user-input').value = e.results[0][0].transcript; };
+  recog.onend = stopRec;
+  recog.onerror = stopRec;
+  recog.start();
+  isRec = true;
+  const b = document.getElementById('btn-rec');
+  b.textContent = '■ 停止'; b.classList.add('recording');
+}
+
+function stopRec() {
+  isRec = false;
+  const b = document.getElementById('btn-rec');
+  b.textContent = '● 録音して話す'; b.classList.remove('recording');
+}
+
+function toggleHint() {
+  const ps = getActivePhrases();
+  const box = document.getElementById('hint-box');
+  hintVisible = !hintVisible;
+  if (hintVisible && ps[idx]) { box.textContent = 'ヒント: ' + ps[idx].en; box.style.display = 'block'; }
+  else { box.style.display = 'none'; }
+}
+
+// ==================== Gemini添削 ====================
+async function requestReview() {
+  if (!apiKey) { alert('先にGemini APIキーを設定してください'); return; }
+  const userText = document.getElementById('user-input').value.trim();
+  if (!userText) { alert('英語を入力または録音してから添削をリクエストしてください'); return; }
+
+  const ps = getActivePhrases();
+  const btn = document.getElementById('btn-review');
+  const errBox = document.getElementById('error-box');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinning">↻</span> 添削中...';
+  document.getElementById('feedback-modal').style.display = 'none';
+  errBox.style.display = 'none';
+
+  const jp = ps[idx]?.jp || '';
+  const prompt = `日本語:「${jp}」\n英訳:「${userText}」\n\n以下の形式で日本語で簡潔に答えてください:\n【正解判定】意味が合っていれば「正解」、大きく外れていれば「不正解」の一語のみ\n【評価】1文\n【修正例】自然な英語1パターン\n【ポイント】1つだけ`;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        contents: [{parts: [{text: prompt}]}],
+        generationConfig: {maxOutputTokens: 400}
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `APIエラー: ${res.status}`);
+    }
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const m = text.match(/【修正例】([^\n【]+)/);
+    if (m) lastModelAnswer = m[1].trim().replace(/^[「"]/,'').replace(/[」"]/,'');
+    document.getElementById('feedback-text').textContent = text;
+    const isCorrect = /【正解判定】\s*正解/.test(text);
+    const box = document.getElementById('feedback-modal-box');
+    box.className = 'modal-box ' + (isCorrect ? 'modal-border-correct' : 'modal-border-wrong');
+    document.getElementById('feedback-correct-btns').style.display = isCorrect ? 'flex' : 'none';
+    document.getElementById('feedback-wrong-btns').style.display = isCorrect ? 'none' : 'flex';
+    document.getElementById('feedback-modal').style.display = 'block';
+    if (isCorrect) { playSuccessSound(); showCorrectOverlay(); }
+    recordStudy();
+  } catch(e) {
+    errBox.textContent = 'エラー: ' + e.message;
+    errBox.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Geminiに添削してもらう';
+}
+
+// ==================== APIキー ====================
+function saveApiKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k) { alert('APIキーを入力してください'); return; }
+  if (!k.startsWith('AIza')) { alert('Gemini APIキーは「AIza」から始まります。確認してください。'); return; }
+  apiKey = k;
+  try { localStorage.setItem('gemini_api_key', k); } catch(e) {}
+  showConnected();
+}
+
+function showConnected() {
+  const bar = document.getElementById('api-bar');
+  bar.className = 'api-bar connected';
+  bar.innerHTML = `<div style="color:#389e0d;font-weight:500">Gemini API 接続済み ✓</div><div style="font-size:12px;color:#888;margin-top:4px">キー: ${apiKey.slice(0,8)}... &nbsp;<button onclick="resetKey()" style="font-size:12px;padding:2px 8px;color:#888">変更</button></div>`;
+}
+
+function resetKey() {
+  apiKey = '';
+  try { localStorage.removeItem('gemini_api_key'); } catch(e) {}
+  const bar = document.getElementById('api-bar');
+  bar.className = 'api-bar';
+  bar.innerHTML = `<div style="font-weight:500;margin-bottom:6px">Gemini APIキーを設定してください</div>
+    <div style="display:flex;gap:8px">
+      <input type="password" id="api-key-input" placeholder="AIza..." style="margin-bottom:0;flex:1">
+      <button onclick="saveApiKey()" style="white-space:nowrap">保存</button>
+    </div>
+    <div style="font-size:11px;color:#888;margin-top:6px">キーはこのブラウザにのみ保存されます。</div>`;
+}
+
+// ==================== Excelインポート ====================
+function importExcel(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const groupInput = document.getElementById('import-group').value.trim();
+  const defaultGroup = groupInput || file.name.replace(/\.[^.]+$/, '');
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, {type: 'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
+
+      if (rows.length === 0) { alert('ファイルにデータがありません'); return; }
+
+      // ヘッダー行スキップ判定（A1セルが「日本語」等の文字列）
+      const firstCell = String(rows[0][0] || '').trim();
+      const startRow = (firstCell === '日本語' || firstCell === 'japanese' || firstCell === 'JP') ? 1 : 0;
+
+      let added = 0;
+      for (let i = startRow; i < rows.length; i++) {
+        const row = rows[i];
+        const jp = String(row[0] || '').trim();
+        if (!jp) continue;
+        const en = String(row[1] || '').trim();
+        const cat = String(row[2] || '').trim() || defaultGroup;
+        allPhrases.push({jp, en, cat});
+        added++;
+      }
+
+      saveCustom();
+      renderDeckSelector();
+
+      // インポートしたグループに自動切換え
+      activeDeck = defaultGroup;
+      try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
+      document.getElementById('deck-select').value = activeDeck;
+      idx = 0;
+      render();
+
+      alert(`✅ ${added}件のフレーズをインポートしました！\nデッキ「${defaultGroup}」に切り替えました。`);
+    } catch(err) {
+      alert('Excelファイルの読み込みに失敗しました: ' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ==================== フレーズ管理 ====================
+function saveCustom() {
+  try {
+    const custom = allPhrases.filter(p => !p.def);
+    localStorage.setItem('eikaiwa_custom', JSON.stringify(custom));
+  } catch(e) {}
+}
+
+function renderList() {
+  // フィルターセレクト更新
+  const filterSel = document.getElementById('list-filter');
+  const decks = getDecks();
+  const currentFilter = filterSel.value || 'すべて';
+  filterSel.innerHTML = decks.map(d => `<option value="${d}"${d === currentFilter ? ' selected' : ''}>${d}</option>`).join('');
+
+  const filterVal = filterSel.value;
+  const el = document.getElementById('phrase-list');
+  el.innerHTML = '';
+
+  const filtered = (filterVal === 'すべて') ? allPhrases : allPhrases.filter(p => p.cat === filterVal);
+
+  filtered.forEach((p, _) => {
+    const globalIdx = allPhrases.indexOf(p);
+    const d = document.createElement('div');
+    d.className = 'phrase-item';
+    d.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.en || '（英語未設定）'}</div>
+        <div class="jp-small">${p.jp}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:#f0f0e8;color:#888">${p.cat}</span>
+        ${!p.def ? `<button style="font-size:12px;padding:4px 8px;color:#c0392b;border-color:#f0c0c0" onclick="delPhrase(${globalIdx})">削除</button>` : ''}
+      </div>`;
+    el.appendChild(d);
+  });
+
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty-state">このカテゴリにフレーズがありません</div>';
+  }
+}
+
+function addPhrase() {
+  const jp = document.getElementById('add-jp').value.trim();
+  const en = document.getElementById('add-en').value.trim();
+  const cat = document.getElementById('add-cat').value;
+  if (!jp) { alert('日本語を入力してください'); return; }
+  allPhrases.push({jp, en, cat});
+  saveCustom();
+  renderDeckSelector();
+  renderList();
+  document.getElementById('add-jp').value = '';
+  document.getElementById('add-en').value = '';
+  alert('フレーズを追加しました！');
+}
+
+function delPhrase(i) {
+  if (!confirm('このフレーズを削除しますか？')) return;
+  allPhrases.splice(i, 1);
+  saveCustom();
+  renderDeckSelector();
+  if (idx >= getActivePhrases().length) idx = 0;
+  render();
+  renderList();
+}
+
+// ==================== 正解演出 ====================
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return _audioCtx;
+}
+
+function playSuccessSound() {
+  try {
+    const ctx = getAudioCtx();
+    const t = ctx.currentTime;
+    const o1 = ctx.createOscillator(), g1 = ctx.createGain();
+    o1.connect(g1); g1.connect(ctx.destination);
+    o1.frequency.value = 880; o1.type = 'sine';
+    g1.gain.setValueAtTime(0.4, t);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    o1.start(t); o1.stop(t + 0.4);
+    const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+    o2.connect(g2); g2.connect(ctx.destination);
+    o2.frequency.value = 659; o2.type = 'sine';
+    g2.gain.setValueAtTime(0.4, t + 0.25);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+    o2.start(t + 0.25); o2.stop(t + 0.8);
+  } catch(e) {}
+}
+
+function showCorrectOverlay() {
+  const el = document.createElement('div');
+  el.className = 'correct-overlay';
+  el.innerHTML = '<div style="font-size:56px;line-height:1">○</div><div style="font-size:22px;margin-top:4px">正解！</div>';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1600);
+}
+
+// ==================== モーダル ====================
+function closeFeedback() {
+  document.getElementById('feedback-modal').style.display = 'none';
+}
+
+// ==================== タブ切替 ====================
+function switchTab(tab, e) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('[id^=tab-]').forEach(t => t.style.display = 'none');
+  e.target.classList.add('active');
+  document.getElementById('tab-' + tab).style.display = 'block';
+  if (tab === 'phrases') renderList();
+}
+</script>
+</body>
+</html>
