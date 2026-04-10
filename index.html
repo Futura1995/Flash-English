@@ -201,7 +201,10 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div class="section-title" style="margin-bottom:0">登録フレーズ一覧</div>
-      <select id="list-filter" onchange="renderList()" style="width:auto;margin-bottom:0;font-size:13px;padding:4px 8px"></select>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="list-filter" onchange="renderList()" style="width:auto;margin-bottom:0;font-size:13px;padding:4px 8px"></select>
+        <button onclick="deleteCategoryPhrases()" style="font-size:12px;padding:4px 10px;color:#c0392b;border-color:#f0c0c0;white-space:nowrap">一括削除</button>
+      </div>
     </div>
     <div style="font-size:12px;color:#aaa;margin-bottom:8px">デフォルトフレーズは削除できません</div>
     <div id="phrase-list"></div>
@@ -920,6 +923,30 @@ function delPhrase(i) {
   allPhrases.splice(i, 1);
   saveCustom();
   renderDeckSelector();
+  if (idx >= getActivePhrases().length) idx = 0;
+  render();
+  renderList();
+}
+
+function deleteCategoryPhrases() {
+  const filterVal = document.getElementById('list-filter').value;
+  if (filterVal === 'すべて') {
+    alert('カテゴリを選択してから一括削除してください');
+    return;
+  }
+  const targets = allPhrases.filter(p => p.cat === filterVal && !p.def);
+  if (targets.length === 0) {
+    alert('削除できるフレーズがありません（デフォルトフレーズは削除不可）');
+    return;
+  }
+  if (!confirm(`カテゴリ「${filterVal}」のフレーズ ${targets.length} 件を削除しますか？\n（デフォルトフレーズは除く）`)) return;
+  allPhrases = allPhrases.filter(p => !(p.cat === filterVal && !p.def));
+  saveCustom();
+  renderDeckSelector();
+  if (activeDeck === filterVal) {
+    activeDeck = 'すべて';
+    try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
+  }
   if (idx >= getActivePhrases().length) idx = 0;
   render();
   renderList();
