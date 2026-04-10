@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>英会話 瞬間英作文アプリ</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.3/dist/xlsx.full.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -153,30 +152,30 @@
   <div id="tab-phrases" style="display:none">
     <!-- Excelインポート -->
     <div class="card">
-      <div class="section-title">📥 Excelファイルからインポート</div>
+      <div class="section-title">📥 CSVファイルからインポート</div>
       <div style="margin-bottom:10px">
         <div class="label">グループ名（省略時はファイル名を使用）</div>
         <input type="text" id="import-group" placeholder="例：TOEIC単語、旅行英語">
       </div>
       <div class="import-section">
         <div style="font-size:14px;color:#666;margin-bottom:10px">
-          .xlsx / .xls ファイルをドロップ、または選択
+          .csv ファイルを選択してください
         </div>
         <label for="excel-input">
           <button class="btn-import" onclick="document.getElementById('excel-input').click()">
-            📂 Excelファイルを選択
+            📂 CSVファイルを選択
           </button>
         </label>
-        <input type="file" id="excel-input" accept=".xlsx,.xls,.csv" onchange="importExcel(event)">
+        <input type="file" id="excel-input" accept=".csv" onchange="importExcel(event)">
       </div>
       <div class="excel-format">
-        <strong>Excelのフォーマット（1行目はヘッダー行、2行目から）</strong>
+        <strong>CSVのフォーマット（1行目はヘッダー行、2行目から）</strong>
         <table>
-          <tr><th>A列</th><th>B列</th><th>C列（省略可）</th></tr>
+          <tr><th>1列目</th><th>2列目</th><th>3列目（省略可）</th></tr>
           <tr><td>日本語</td><td>英語ヒント</td><td>カテゴリ</td></tr>
           <tr><td>おはよう</td><td>Good morning</td><td>日常会話</td></tr>
         </table>
-        <div style="margin-top:6px;color:#666">C列を省略すると、グループ名（またはファイル名）がカテゴリになります。</div>
+        <div style="margin-top:6px;color:#666">3列目を省略すると、グループ名（またはファイル名）がカテゴリになります。</div>
       </div>
     </div>
 
@@ -241,10 +240,10 @@
       </p>
     </div>
     <div class="card">
-      <div class="section-title" style="margin-bottom:8px">Excelインポートについて</div>
+      <div class="section-title" style="margin-bottom:8px">CSVインポートについて</div>
       <p style="font-size:14px;line-height:1.8;color:#444">
-        「フレーズ管理」タブからExcelファイルをインポートできます。<br>
-        A列：日本語、B列：英語ヒント、C列：カテゴリ（省略可）<br>
+        「フレーズ管理」タブからCSVファイルをインポートできます。<br>
+        1列目：日本語、2列目：英語ヒント、3列目：カテゴリ（省略可）<br>
         インポートしたグループは「今日の気分」のデッキとして選択できます。
       </p>
     </div>
@@ -799,47 +798,29 @@ function importExcel(e) {
   }
 
   const reader = new FileReader();
-  const isCsv = file.name.toLowerCase().endsWith('.csv');
-
-  if (isCsv) {
-    reader.onload = function(ev) {
-      try {
-        const text = ev.target.result;
-        const lines = text.split(/\r?\n/);
-        const rows = lines.map(line => {
-          // カンマ区切りをパース（ダブルクォート対応）
-          const result = [];
-          let cur = '', inQ = false;
-          for (let i = 0; i < line.length; i++) {
-            const c = line[i];
-            if (c === '"') { inQ = !inQ; }
-            else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
-            else { cur += c; }
-          }
-          result.push(cur);
-          return result;
-        });
-        processRows(rows);
-      } catch(err) {
-        alert('CSVファイルの読み込みに失敗しました:\n' + err.message);
-      }
-      e.target.value = '';
-    };
-    reader.readAsText(file, 'UTF-8');
-  } else {
-    reader.onload = function(ev) {
-      try {
-        const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
-        processRows(rows);
-      } catch(err) {
-        alert('Excelファイルの読み込みに失敗しました:\n' + err.message + '\n\nXLSX loaded: ' + (typeof XLSX !== 'undefined'));
-      }
-      e.target.value = '';
-    };
-    reader.readAsArrayBuffer(file);
-  }
+  reader.onload = function(ev) {
+    try {
+      const text = ev.target.result;
+      const lines = text.split(/\r?\n/);
+      const rows = lines.map(line => {
+        const result = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') { inQ = !inQ; }
+          else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+          else { cur += c; }
+        }
+        result.push(cur);
+        return result;
+      });
+      processRows(rows);
+    } catch(err) {
+      alert('CSVファイルの読み込みに失敗しました:\n' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 // ==================== フレーズ管理 ====================
