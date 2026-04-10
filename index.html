@@ -289,6 +289,7 @@
     <div style="font-size:14px;color:#666;margin-bottom:4px" id="completion-deck-name"></div>
     <div style="font-size:28px;font-weight:700;color:#ea580c;margin:12px 0" id="completion-count"></div>
     <div style="font-size:13px;color:#888;margin-bottom:1.25rem">回完走</div>
+    <div id="completion-next" style="margin-bottom:1rem"></div>
     <button class="btn-primary" onclick="closeCompletion()" style="width:100%">続ける</button>
   </div>
 </div>
@@ -1083,6 +1084,30 @@ function closeFeedback() {
 function showCompletion(deck, count) {
   document.getElementById('completion-deck-name').textContent = `「${deck}」デッキ`;
   document.getElementById('completion-count').textContent = count;
+
+  // おすすめ次デッキを計算（現在のデッキを除く）
+  const otherDecks = getDecks().filter(d => d !== 'すべて' && d !== deck);
+  const nextEl = document.getElementById('completion-next');
+  if (otherDecks.length > 0) {
+    const scored = otherDecks.map(d => ({
+      name: d,
+      score: (deckCounts[d] || 0) * 10 + (deckCorrects[d] || 0),
+      rand: Math.random()
+    }));
+    scored.sort((a, b) => a.score - b.score || a.rand - b.rand);
+    const next = scored[0];
+    const phraseCount = allPhrases.filter(p => p.cat === next.name).length;
+    nextEl.innerHTML = `
+      <div style="font-size:11px;color:#aaa;margin-bottom:8px">次のおすすめ</div>
+      <button onclick="selectDeckFromPicker('${next.name.replace(/'/g,"\\'")}');closeCompletion()"
+        style="width:100%;text-align:left;padding:10px 14px;border-radius:10px;border:1px solid #fed7aa;background:#fff7ed">
+        <div style="font-weight:500;font-size:14px">${next.name}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">${phraseCount}問 / 完走${deckCounts[next.name]||0}回・正解${deckCorrects[next.name]||0}問</div>
+      </button>`;
+  } else {
+    nextEl.innerHTML = '';
+  }
+
   document.getElementById('completion-modal').style.display = 'flex';
 }
 
