@@ -222,6 +222,17 @@
       <button onclick="driveSignIn()" id="btn-drive-signin" style="width:100%;background:#4285f4;color:#fff;border-color:#4285f4">Googleでサインイン</button>
       <div style="font-size:11px;color:#888;margin-top:6px">フレーズ・連続記録をDriveに保存し、他の端末と共有できます。</div>
     </div>
+    <div class="card">
+      <div class="section-title">📊 デッキ統計</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="exportStats()" style="flex:1">↓ エクスポート</button>
+        <label style="flex:1;display:block">
+          <button style="width:100%" onclick="document.getElementById('stats-input').click()">↑ インポート</button>
+          <input type="file" id="stats-input" accept=".json" style="display:none" onchange="importStats(event)">
+        </label>
+      </div>
+      <div style="font-size:11px;color:#aaa;margin-top:6px">各デッキの完走回数・正解数を JSON ファイルで保存・復元できます</div>
+    </div>
   </div>
 
   <!-- 使い方タブ -->
@@ -961,6 +972,45 @@ function showCorrectOverlay() {
   setTimeout(() => el.remove(), 1600);
 }
 
+// ==================== デッキ統計エクスポート・インポート ====================
+function exportStats() {
+  const stats = { deckCounts, deckCorrects };
+  const blob = new Blob([JSON.stringify(stats, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'deck_stats.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importStats(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.deckCounts) {
+        Object.entries(data.deckCounts).forEach(([k, v]) => {
+          deckCounts[k] = Math.max(deckCounts[k] || 0, v);
+        });
+        saveDeckCounts();
+      }
+      if (data.deckCorrects) {
+        Object.entries(data.deckCorrects).forEach(([k, v]) => {
+          deckCorrects[k] = Math.max(deckCorrects[k] || 0, v);
+        });
+        saveDeckCorrects();
+      }
+      alert('✅ 統計データを読み込みました');
+    } catch(err) {
+      alert('読み込みに失敗しました: ' + err.message);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
 // ==================== デッキ選択モーダル ====================
 function showDeckPicker() {
   const decks = getDecks().filter(d => d !== 'すべて');
@@ -982,6 +1032,22 @@ function showDeckPicker() {
 
   const list = document.getElementById('deck-picker-list');
   list.innerHTML = '';
+
+  // 全デッキドロップダウン（すべて含む）
+  const allDecksForSelect = getDecks(); // ['すべて', ...cats]
+  const dropdownDiv = document.createElement('div');
+  dropdownDiv.style.cssText = 'margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e8e8e0';
+  dropdownDiv.innerHTML = `
+    <div style="font-size:11px;color:#aaa;margin-bottom:6px;font-weight:500">すべてのデッキから選ぶ</div>
+    <div style="display:flex;gap:8px">
+      <select id="picker-all-select" style="flex:1;margin-bottom:0">
+        ${allDecksForSelect.map(d => `<option value="${d}"${d === activeDeck ? ' selected' : ''}>${d}</option>`).join('')}
+      </select>
+      <button class="btn-primary" style="white-space:nowrap"
+        onclick="selectDeckFromPicker(document.getElementById('picker-all-select').value)">始める</button>
+    </div>
+  `;
+  list.appendChild(dropdownDiv);
 
   // おすすめを先頭に、残りを後ろに並べる
   const ordered = [
