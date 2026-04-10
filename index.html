@@ -777,7 +777,7 @@ function importExcel(e) {
   const reader = new FileReader();
   reader.onload = function(ev) {
     try {
-      const wb = XLSX.read(ev.target.result, {type: 'binary'});
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
 
@@ -814,7 +814,7 @@ function importExcel(e) {
     }
     e.target.value = '';
   };
-  reader.readAsBinaryString(file);
+  reader.readAsArrayBuffer(file);
 }
 
 // ==================== フレーズ管理 ====================
