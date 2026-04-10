@@ -271,11 +271,11 @@
     <div style="font-weight:500;margin-bottom:8px;font-size:15px">添削結果</div>
     <div class="feedback-box" id="feedback-text"></div>
     <button onclick="speakFeedback()" style="width:100%;margin-top:0.75rem">🔊 修正例を聞く</button>
-    <div class="modal-btns" id="feedback-correct-btns" style="display:none">
-      <button class="btn-primary" onclick="nextPhrase();closeFeedback()" style="flex:1">次の問題 →</button>
+    <div class="modal-btns" id="feedback-correct-btns" style="display:none;padding-bottom:0.75rem">
       <button onclick="closeFeedback()" style="flex:1">もう一度</button>
+      <button class="btn-primary" onclick="nextPhrase();closeFeedback()" style="flex:1">次の問題 →</button>
     </div>
-    <div class="modal-btns" id="feedback-wrong-btns" style="display:none">
+    <div class="modal-btns" id="feedback-wrong-btns" style="display:none;padding-bottom:0.75rem">
       <button onclick="closeFeedback()" style="width:100%">もう一度</button>
     </div>
   </div>
@@ -596,25 +596,33 @@ function speakFeedback() {
 }
 
 function toggleRecord() {
-  if (isRec) { if (recog) recog.stop(); return; }
+  if (isRec) {
+    if (recog) { recog.onend = null; recog.onerror = null; recog.stop(); }
+    stopRec();
+    return;
+  }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { alert('音声認識はChromeブラウザで使用できます'); return; }
   recog = new SR();
   recog.lang = 'en-US';
   recog.interimResults = false;
   recog.onresult = e => { document.getElementById('user-input').value = e.results[0][0].transcript; };
-  recog.onend = stopRec;
-  recog.onerror = stopRec;
-  recog.start();
-  isRec = true;
-  const b = document.getElementById('btn-rec');
-  b.textContent = '■ 停止'; b.classList.add('recording');
+  recog.onend = () => { if (isRec) stopRec(); };
+  recog.onerror = () => stopRec();
+  try {
+    recog.start();
+    isRec = true;
+    const b = document.getElementById('btn-rec');
+    b.textContent = '■ 停止'; b.classList.add('recording');
+  } catch(e) {
+    stopRec();
+  }
 }
 
 function stopRec() {
   isRec = false;
   const b = document.getElementById('btn-rec');
-  b.textContent = '● 録音して話す'; b.classList.remove('recording');
+  if (b) { b.textContent = '● 録音して話す'; b.classList.remove('recording'); }
 }
 
 function toggleHint() {
