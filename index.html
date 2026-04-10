@@ -295,20 +295,8 @@
 
 <script>
 // ==================== データ ====================
-const DEFAULTS = [
-  {jp:"おはようございます。今日はいい天気ですね。",en:"Good morning. It's a nice day today, isn't it?",cat:"日常会話",def:true},
-  {jp:"すみません、この近くにコンビニはありますか？",en:"Excuse me, is there a convenience store near here?",cat:"日常会話",def:true},
-  {jp:"もう少しゆっくり話していただけますか？",en:"Could you speak a little more slowly, please?",cat:"日常会話",def:true},
-  {jp:"この料理、本当においしいですね！",en:"This dish is really delicious!",cat:"日常会話",def:true},
-  {jp:"今日は少し頭が痛くて、早退してもいいですか？",en:"I have a bit of a headache today. Would it be okay if I left early?",cat:"日常会話",def:true},
-  {jp:"週末は何か予定がありますか？",en:"Do you have any plans for the weekend?",cat:"日常会話",def:true},
-  {jp:"それについてもう少し詳しく教えてもらえますか？",en:"Could you tell me a little more about that?",cat:"日常会話",def:true},
-  {jp:"電車が遅れていて、10分ほど遅刻しそうです。",en:"The train is delayed, so I might be about 10 minutes late.",cat:"日常会話",def:true},
-  {jp:"この仕事、一緒に手伝ってもらえると助かります。",en:"It would really help if you could assist me with this task.",cat:"日常会話",def:true},
-  {jp:"お会いできて光栄です。よろしくお願いします。",en:"It's a pleasure to meet you. I look forward to working with you.",cat:"日常会話",def:true},
-];
-
-let allPhrases = [...DEFAULTS];
+let DEFAULTS = [];
+let allPhrases = [];
 let activeDeck = 'すべて';
 let idx = 0;
 let recog = null;
@@ -383,8 +371,11 @@ async function driveFindFile() {
   return data.files?.[0]?.id || null;
 }
 
-async function driveSave() {
-  if (!driveToken) { alert('先にGoogleでサインインしてください'); return; }
+async function driveSave(opts = {}) {
+  if (!driveToken) {
+    if (!opts.silent) alert('先にGoogleでサインインしてください');
+    return;
+  }
   const payload = JSON.stringify({
     phrases: allPhrases.filter(p => !p.def),
     streak: loadStreak(),
@@ -410,8 +401,10 @@ async function driveSave() {
     const d = await res.json();
     driveFileId = d.id;
   }
-  if (res.ok) alert('✅ Driveに保存しました');
-  else alert('❌ 保存に失敗しました');
+  if (!opts.silent) {
+    if (res.ok) alert('✅ Driveに保存しました');
+    else alert('❌ 保存に失敗しました');
+  }
 }
 
 async function driveLoad() {
@@ -463,7 +456,19 @@ async function driveLoad() {
 }
 
 // ==================== 初期化 ====================
-(function init() {
+(async function init() {
+  // デフォルトフレーズをJSONから読み込み
+  try {
+    const res = await fetch('defaults.json');
+    if (res.ok) {
+      const data = await res.json();
+      DEFAULTS = data.map(p => ({...p, def: true}));
+    }
+  } catch(e) {
+    console.warn('defaults.json の読み込みに失敗しました。フォールバックなし。', e);
+  }
+  allPhrases = [...DEFAULTS];
+
   // カスタムフレーズ読み込み
   try {
     const s = localStorage.getItem('eikaiwa_custom');
@@ -818,6 +823,7 @@ function saveCustom() {
     const custom = allPhrases.filter(p => !p.def);
     localStorage.setItem('eikaiwa_custom', JSON.stringify(custom));
   } catch(e) {}
+  if (driveToken) driveSave({ silent: true });
 }
 
 function renderList() {
