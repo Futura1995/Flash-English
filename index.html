@@ -68,7 +68,6 @@
   .completion-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;background:rgba(0,0,0,0.5)}
   .completion-box{background:#fff;border-radius:20px;padding:2rem 1.5rem;text-align:center;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
   .deck-picker-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:300;background:rgba(0,0,0,0.55)}
-  .login-prompt-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:400;background:rgba(0,0,0,0.5)}
   .deck-picker-box{background:#fff;border-radius:20px;padding:1.5rem 1.25rem;max-width:360px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:85vh;overflow-y:auto}
   .deck-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 14px;border-radius:10px;border:1px solid #e0e0d8;background:#fff;font-size:14px;margin-bottom:8px;cursor:pointer;text-align:left}
   .deck-btn:hover{background:#f5f5f0}
@@ -282,17 +281,6 @@
   </div>
 </div>
 
-<!-- Googleログインプロンプトモーダル -->
-<div id="login-prompt-modal" class="login-prompt-modal" style="display:none">
-  <div class="completion-box">
-    <div style="font-size:40px;margin-bottom:8px">☁️</div>
-    <div style="font-size:17px;font-weight:700;margin-bottom:8px">データをクラウドに保存しよう</div>
-    <div style="font-size:13px;color:#666;margin-bottom:1.25rem;line-height:1.6">Googleアカウントでサインインすると、フレーズや学習記録を複数のデバイスで同期できます。</div>
-    <button class="btn-primary" onclick="localStorage.setItem('login_prompt_dismissed','1');driveSignIn();document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;margin-bottom:8px">Googleでサインイン</button>
-    <button onclick="localStorage.setItem('login_prompt_dismissed','1');document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;color:#888;border-color:#ddd">あとで</button>
-  </div>
-</div>
-
 <!-- デッキ完了モーダル -->
 <div id="completion-modal" class="completion-modal" style="display:none">
   <div class="completion-box">
@@ -356,35 +344,6 @@ const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_FILENAME = 'eikaiwa_data.json';
 let driveToken = null;
 let driveFileId = null;
-
-function waitForGsi(timeoutMs = 5000) {
-  return new Promise(resolve => {
-    if (typeof google !== 'undefined') { resolve(true); return; }
-    const t = setInterval(() => { if (typeof google !== 'undefined') { clearInterval(t); resolve(true); } }, 200);
-    setTimeout(() => { clearInterval(t); resolve(false); }, timeoutMs);
-  });
-}
-
-async function tryAutoSignIn() {
-  const ok = await waitForGsi();
-  if (!ok) return false;
-  return new Promise(resolve => {
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: DRIVE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
-        callback: async (resp) => {
-          if (resp.error) { resolve(false); return; }
-          driveToken = resp.access_token;
-          renderDriveBar(true);
-          await driveLoad({ silent: true });
-          resolve(true);
-        }
-      });
-      client.requestAccessToken({ prompt: '' });
-    } catch(e) { resolve(false); }
-  });
-}
 
 function driveSignIn() {
   if (typeof google === 'undefined') { alert('Google認証ライブラリの読み込み中です。少し待ってから再度お試しください。'); return; }
@@ -474,17 +433,14 @@ async function driveSave(opts = {}) {
   }
 }
 
-async function driveLoad(opts = {}) {
+async function driveLoad() {
   if (!driveToken) return;
   if (!driveFileId) driveFileId = await driveFindFile();
-  if (!driveFileId) {
-    if (!opts.silent) alert('Driveにデータがありません。先にこの端末で「Driveに保存」してください。');
-    return;
-  }
+  if (!driveFileId) { alert('Driveにデータがありません。先にこの端末で「Driveに保存」してください。'); return; }
   const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
     headers: {Authorization: 'Bearer ' + driveToken}
   });
-  if (!res.ok) { if (!opts.silent) alert('❌ 読み込みに失敗しました'); return; }
+  if (!res.ok) { alert('❌ 読み込みに失敗しました'); return; }
   const data = await res.json();
 
   // フレーズをマージ（重複除去）
@@ -528,7 +484,7 @@ async function driveLoad(opts = {}) {
   renderDeckSelector();
   idx = 0;
   render();
-  if (!opts.silent) alert('✅ Driveからデータを読み込みました');
+  alert('✅ Driveからデータを読み込みました');
 }
 
 // ==================== 初期化 ====================
@@ -568,13 +524,6 @@ async function driveLoad(opts = {}) {
   renderStreak();
   renderDeckSelector();
   render();
-
-  // GSI読み込み後にサイレント再認証を試みる
-  tryAutoSignIn().then(signedIn => {
-    if (!signedIn && !localStorage.getItem('login_prompt_dismissed')) {
-      document.getElementById('login-prompt-modal').style.display = 'flex';
-    }
-  });
 })();
 
 // ==================== 日付（午前3時基準） ====================
@@ -695,7 +644,6 @@ function nextPhrase() {
     const key = activeDeck;
     deckCounts[key] = (deckCounts[key] || 0) + 1;
     saveDeckCounts();
-    driveSave({ silent: true });
     showCompletion(key, deckCounts[key]);
   }
 }
