@@ -68,6 +68,7 @@
   .completion-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;background:rgba(0,0,0,0.5)}
   .completion-box{background:#fff;border-radius:20px;padding:2rem 1.5rem;text-align:center;max-width:320px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)}
   .deck-picker-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:300;background:rgba(0,0,0,0.55)}
+  .login-prompt-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:400;background:rgba(0,0,0,0.5)}
   .deck-picker-box{background:#fff;border-radius:20px;padding:1.5rem 1.25rem;max-width:360px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,0.2);max-height:85vh;overflow-y:auto}
   .deck-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 14px;border-radius:10px;border:1px solid #e0e0d8;background:#fff;font-size:14px;margin-bottom:8px;cursor:pointer;text-align:left}
   .deck-btn:hover{background:#f5f5f0}
@@ -278,6 +279,17 @@
     <div style="font-size:18px;font-weight:700;margin-bottom:4px">今日は何を学習する？</div>
     <div style="font-size:12px;color:#aaa;margin-bottom:16px">デッキを選んでスタート</div>
     <div id="deck-picker-list"></div>
+  </div>
+</div>
+
+<!-- Googleログインプロンプトモーダル -->
+<div id="login-prompt-modal" class="login-prompt-modal" style="display:none">
+  <div class="completion-box">
+    <div style="font-size:40px;margin-bottom:8px">☁️</div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:8px">データをクラウドに保存しよう</div>
+    <div style="font-size:13px;color:#666;margin-bottom:1.25rem;line-height:1.6">Googleアカウントでサインインすると、フレーズや学習記録を複数のデバイスで同期できます。</div>
+    <button class="btn-primary" onclick="driveSignIn();document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;margin-bottom:8px">Googleでサインイン</button>
+    <button onclick="document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;color:#888;border-color:#ddd">あとで</button>
   </div>
 </div>
 
@@ -524,6 +536,9 @@ async function driveLoad() {
   renderStreak();
   renderDeckSelector();
   render();
+  if (!driveToken) {
+    document.getElementById('login-prompt-modal').style.display = 'flex';
+  }
 })();
 
 // ==================== 日付（午前3時基準） ====================
