@@ -167,7 +167,7 @@
             📂 Excelファイルを選択
           </button>
         </label>
-        <input type="file" id="excel-input" accept=".xlsx,.xls" onchange="importExcel(event)">
+        <input type="file" id="excel-input" accept=".xlsx,.xls,.csv" onchange="importExcel(event)">
       </div>
       <div class="excel-format">
         <strong>Excelのフォーマット（1行目はヘッダー行、2行目から）</strong>
@@ -774,47 +774,72 @@ function importExcel(e) {
   const groupInput = document.getElementById('import-group').value.trim();
   const defaultGroup = groupInput || file.name.replace(/\.[^.]+$/, '');
 
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    try {
-      const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
-
-      if (rows.length === 0) { alert('ファイルにデータがありません'); return; }
-
-      // ヘッダー行スキップ判定（A1セルが「日本語」等の文字列）
-      const firstCell = String(rows[0][0] || '').trim();
-      const startRow = (firstCell === '日本語' || firstCell === 'japanese' || firstCell === 'JP') ? 1 : 0;
-
-      let added = 0;
-      for (let i = startRow; i < rows.length; i++) {
-        const row = rows[i];
-        const jp = String(row[0] || '').trim();
-        if (!jp) continue;
-        const en = String(row[1] || '').trim();
-        const cat = String(row[2] || '').trim() || defaultGroup;
-        allPhrases.push({jp, en, cat});
-        added++;
-      }
-
-      saveCustom();
-      renderDeckSelector();
-
-      // インポートしたグループに自動切換え
-      activeDeck = defaultGroup;
-      try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
-      document.getElementById('deck-select').value = activeDeck;
-      idx = 0;
-      render();
-
-      alert(`✅ ${added}件のフレーズをインポートしました！\nデッキ「${defaultGroup}」に切り替えました。`);
-    } catch(err) {
-      alert('Excelファイルの読み込みに失敗しました:\n' + err.message + '\n\nXLSX loaded: ' + (typeof XLSX !== 'undefined'));
+  function processRows(rows) {
+    if (rows.length === 0) { alert('ファイルにデータがありません'); return; }
+    const firstCell = String(rows[0][0] || '').trim();
+    const startRow = (firstCell === '日本語' || firstCell === 'japanese' || firstCell === 'JP') ? 1 : 0;
+    let added = 0;
+    for (let i = startRow; i < rows.length; i++) {
+      const row = rows[i];
+      const jp = String(row[0] || '').trim();
+      if (!jp) continue;
+      const en = String(row[1] || '').trim();
+      const cat = String(row[2] || '').trim() || defaultGroup;
+      allPhrases.push({jp, en, cat});
+      added++;
     }
-    e.target.value = '';
-  };
-  reader.readAsArrayBuffer(file);
+    saveCustom();
+    renderDeckSelector();
+    activeDeck = defaultGroup;
+    try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
+    document.getElementById('deck-select').value = activeDeck;
+    idx = 0;
+    render();
+    alert(`✅ ${added}件のフレーズをインポートしました！\nデッキ「${defaultGroup}」に切り替えました。`);
+  }
+
+  const reader = new FileReader();
+  const isCsv = file.name.toLowerCase().endsWith('.csv');
+
+  if (isCsv) {
+    reader.onload = function(ev) {
+      try {
+        const text = ev.target.result;
+        const lines = text.split(/\r?\n/);
+        const rows = lines.map(line => {
+          // カンマ区切りをパース（ダブルクォート対応）
+          const result = [];
+          let cur = '', inQ = false;
+          for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (c === '"') { inQ = !inQ; }
+            else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+            else { cur += c; }
+          }
+          result.push(cur);
+          return result;
+        });
+        processRows(rows);
+      } catch(err) {
+        alert('CSVファイルの読み込みに失敗しました:\n' + err.message);
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.onload = function(ev) {
+      try {
+        const wb = XLSX.read(new Uint8Array(ev.target.result), {type: 'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
+        processRows(rows);
+      } catch(err) {
+        alert('Excelファイルの読み込みに失敗しました:\n' + err.message + '\n\nXLSX loaded: ' + (typeof XLSX !== 'undefined'));
+      }
+      e.target.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+  }
 }
 
 // ==================== フレーズ管理 ====================
