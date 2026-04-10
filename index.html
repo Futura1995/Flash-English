@@ -288,8 +288,8 @@
     <div style="font-size:40px;margin-bottom:8px">☁️</div>
     <div style="font-size:17px;font-weight:700;margin-bottom:8px">データをクラウドに保存しよう</div>
     <div style="font-size:13px;color:#666;margin-bottom:1.25rem;line-height:1.6">Googleアカウントでサインインすると、フレーズや学習記録を複数のデバイスで同期できます。</div>
-    <button class="btn-primary" onclick="driveSignIn();document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;margin-bottom:8px">Googleでサインイン</button>
-    <button onclick="document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;color:#888;border-color:#ddd">あとで</button>
+    <button class="btn-primary" onclick="localStorage.setItem('login_prompt_dismissed','1');driveSignIn();document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;margin-bottom:8px">Googleでサインイン</button>
+    <button onclick="localStorage.setItem('login_prompt_dismissed','1');document.getElementById('login-prompt-modal').style.display='none'" style="width:100%;color:#888;border-color:#ddd">あとで</button>
   </div>
 </div>
 
@@ -536,7 +536,7 @@ async function driveLoad() {
   renderStreak();
   renderDeckSelector();
   render();
-  if (!driveToken) {
+  if (!driveToken && !localStorage.getItem('login_prompt_dismissed')) {
     document.getElementById('login-prompt-modal').style.display = 'flex';
   }
 })();
