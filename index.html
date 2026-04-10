@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>英会話 瞬間英作文アプリ</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.3/dist/xlsx.full.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh;overflow-x:hidden}
   .app{max-width:640px;margin:0 auto;padding:0.5rem 1rem}
   .streak-bar{display:flex;align-items:center;justify-content:space-between;margin:0.4rem 0 0.6rem}
   .streak-badge{display:flex;align-items:center;gap:6px;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:500;color:#c2410c}
@@ -605,8 +605,14 @@ function toggleRecord() {
   if (!SR) { alert('音声認識はChromeブラウザで使用できます'); return; }
   recog = new SR();
   recog.lang = 'en-US';
+  recog.continuous = true;
   recog.interimResults = false;
-  recog.onresult = e => { document.getElementById('user-input').value = e.results[0][0].transcript; };
+  recog.onresult = e => {
+    let t = '';
+    for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript + ' ';
+    t = t.trim();
+    if (t) document.getElementById('user-input').value = t;
+  };
   recog.onend = () => { if (isRec) stopRec(); };
   recog.onerror = () => stopRec();
   try {
@@ -648,7 +654,7 @@ async function requestReview() {
   errBox.style.display = 'none';
 
   const jp = ps[idx]?.jp || '';
-  const prompt = `日本語:「${jp}」\n英訳:「${userText}」\n\n以下の形式で日本語で簡潔に答えてください:\n【正解判定】意味が合っていれば「正解」、大きく外れていれば「不正解」の一語のみ\n【評価】1文\n【修正例】自然な英語1パターン\n【ポイント】1つだけ`;
+  const prompt = `日本語:「${jp}」\n英訳:「${userText}」\n\n以下の形式で日本語で簡潔に答えてください:\n【正解判定】意味が合っていれば「正解」、大きく外れていれば「不正解」の一語のみ。句読点の有無や大文字小文字の違いは無視すること\n【評価】1文\n【修正例】自然な英語1パターン\n【ポイント】1つだけ`;
 
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`, {
