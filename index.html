@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>英会話 瞬間英作文アプリ</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.3/dist/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
@@ -48,6 +49,8 @@
   .section-title{font-size:14px;font-weight:500;margin-bottom:8px}
   .api-bar{background:#fffbe6;border:1px solid #ffe58f;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:13px}
   .api-bar.connected{background:#f6ffed;border-color:#b7eb8f}
+  .drive-bar{background:#f0f4ff;border:1px solid #c7d7fd;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:13px}
+  .drive-bar.connected{background:#f6ffed;border-color:#b7eb8f}
   .error-box{background:#fff0f0;border:1px solid #ffa39e;border-radius:8px;padding:0.75rem 1rem;font-size:13px;color:#c0392b;margin-bottom:1rem}
   .empty-state{text-align:center;padding:2rem;color:#888;font-size:14px}
   .deck-card{background:#fff;border:1px solid #e8e8e0;border-radius:12px;padding:1rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px}
@@ -99,6 +102,13 @@
       <button onclick="saveApiKey()" style="white-space:nowrap">保存</button>
     </div>
     <div style="font-size:11px;color:#888;margin-top:6px">キーはこのブラウザにのみ保存されます。外部には送信されません。</div>
+  </div>
+
+  <!-- Google Drive 同期バー -->
+  <div class="drive-bar" id="drive-bar">
+    <div style="font-weight:500;margin-bottom:6px">Google Drive でデータを同期（全端末で共有）</div>
+    <button onclick="driveSignIn()" id="btn-drive-signin" style="width:100%;background:#4285f4;color:#fff;border-color:#4285f4">Googleでサインイン</button>
+    <div style="font-size:11px;color:#888;margin-top:6px">フレーズ・連続記録をDriveに保存し、他の端末と共有できます。</div>
   </div>
 
   <div class="tab-bar">
@@ -285,6 +295,134 @@ let isRec = false;
 let hintVisible = false;
 let lastModelAnswer = '';
 let apiKey = '';
+
+// ==================== Google Drive ====================
+const DRIVE_CLIENT_ID = '215427701106-o2c6h6ieh22s2q70hfa0e13qljmcu2na.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_FILENAME = 'eikaiwa_data.json';
+let driveToken = null;
+let driveFileId = null;
+
+function driveSignIn() {
+  if (typeof google === 'undefined') { alert('Google認証ライブラリの読み込み中です。少し待ってから再度お試しください。'); return; }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (resp) => {
+      if (resp.error) { alert('サインインに失敗しました: ' + resp.error); return; }
+      driveToken = resp.access_token;
+      renderDriveBar(true);
+      await driveLoad();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function driveSignOut() {
+  if (driveToken) google.accounts.oauth2.revoke(driveToken);
+  driveToken = null;
+  driveFileId = null;
+  renderDriveBar(false);
+}
+
+function renderDriveBar(connected) {
+  const bar = document.getElementById('drive-bar');
+  if (connected) {
+    bar.className = 'drive-bar connected';
+    bar.innerHTML = `
+      <div style="color:#389e0d;font-weight:500;margin-bottom:6px">Google Drive 接続済み ✓</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="driveSave()" style="flex:1;background:#389e0d;color:#fff;border-color:#389e0d">↑ Driveに保存</button>
+        <button onclick="driveLoad()" style="flex:1">↓ Driveから読込</button>
+        <button onclick="driveSignOut()" style="color:#888;font-size:12px;padding:6px 10px">サインアウト</button>
+      </div>`;
+  } else {
+    bar.className = 'drive-bar';
+    bar.innerHTML = `
+      <div style="font-weight:500;margin-bottom:6px">Google Drive でデータを同期（全端末で共有）</div>
+      <button onclick="driveSignIn()" style="width:100%;background:#4285f4;color:#fff;border-color:#4285f4">Googleでサインイン</button>
+      <div style="font-size:11px;color:#888;margin-top:6px">フレーズ・連続記録をDriveに保存し、他の端末と共有できます。</div>`;
+  }
+}
+
+async function driveFindFile() {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name%3D'${DRIVE_FILENAME}'+and+trashed%3Dfalse&fields=files(id)`,
+    {headers: {Authorization: 'Bearer ' + driveToken}}
+  );
+  const data = await res.json();
+  return data.files?.[0]?.id || null;
+}
+
+async function driveSave() {
+  if (!driveToken) { alert('先にGoogleでサインインしてください'); return; }
+  const payload = JSON.stringify({
+    phrases: allPhrases.filter(p => !p.def),
+    streak: loadStreak(),
+    activeDeck
+  });
+  const meta = JSON.stringify({name: DRIVE_FILENAME, mimeType: 'application/json'});
+  const body = new FormData();
+  body.append('metadata', new Blob([meta], {type: 'application/json'}));
+  body.append('file', new Blob([payload], {type: 'application/json'}));
+
+  if (!driveFileId) driveFileId = await driveFindFile();
+
+  let res;
+  if (driveFileId) {
+    res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`, {
+      method: 'PATCH', headers: {Authorization: 'Bearer ' + driveToken}, body
+    });
+  } else {
+    res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST', headers: {Authorization: 'Bearer ' + driveToken}, body
+    });
+    const d = await res.json();
+    driveFileId = d.id;
+  }
+  if (res.ok) alert('✅ Driveに保存しました');
+  else alert('❌ 保存に失敗しました');
+}
+
+async function driveLoad() {
+  if (!driveToken) return;
+  if (!driveFileId) driveFileId = await driveFindFile();
+  if (!driveFileId) { alert('Driveにデータがありません。先にこの端末で「Driveに保存」してください。'); return; }
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+    headers: {Authorization: 'Bearer ' + driveToken}
+  });
+  if (!res.ok) { alert('❌ 読み込みに失敗しました'); return; }
+  const data = await res.json();
+
+  // フレーズをマージ（重複除去）
+  const existing = allPhrases.filter(p => !p.def);
+  const remote = data.phrases || [];
+  const merged = [...remote];
+  existing.forEach(e => {
+    if (!merged.some(r => r.jp === e.jp && r.en === e.en)) merged.push(e);
+  });
+  allPhrases = [...DEFAULTS, ...merged];
+  try { localStorage.setItem('eikaiwa_custom', JSON.stringify(merged)); } catch(e) {}
+
+  // streakは新しい方を優先
+  if (data.streak) {
+    const local = loadStreak();
+    const useRemote = !local.lastDate || data.streak.lastDate >= local.lastDate;
+    if (useRemote) try { localStorage.setItem('streak', JSON.stringify(data.streak)); } catch(e) {}
+  }
+
+  // デッキ
+  if (data.activeDeck) {
+    activeDeck = data.activeDeck;
+    try { localStorage.setItem('activeDeck', activeDeck); } catch(e) {}
+  }
+
+  renderStreak();
+  renderDeckSelector();
+  idx = 0;
+  render();
+  alert('✅ Driveからデータを読み込みました');
+}
 
 // ==================== 初期化 ====================
 (function init() {
