@@ -810,7 +810,7 @@ function importExcel(e) {
 
       alert(`✅ ${added}件のフレーズをインポートしました！\nデッキ「${defaultGroup}」に切り替えました。`);
     } catch(err) {
-      alert('Excelファイルの読み込みに失敗しました: ' + err.message);
+      alert('Excelファイルの読み込みに失敗しました:\n' + err.message + '\n\nXLSX loaded: ' + (typeof XLSX !== 'undefined'));
     }
     e.target.value = '';
   };
