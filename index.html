@@ -99,7 +99,15 @@
     <div class="streak-badge zero" id="streak-badge">
       <span id="streak-display">今日から始めよう！</span>
     </div>
-    <div style="font-size:11px;color:#aaa" id="streak-date"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font-size:11px;color:#aaa" id="streak-date"></div>
+      <button id="user-icon-btn" onclick="onUserIconClick()" style="width:28px;height:28px;border-radius:50%;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#e0e0d8;flex-shrink:0" title="Googleでサインイン">
+        <svg id="user-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="8" r="4" fill="#888"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#888"/>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <div class="tab-bar">
@@ -380,7 +388,28 @@ function driveSignOut() {
   renderDriveBar(false);
 }
 
+function renderUserIcon(connected) {
+  const btn = document.getElementById('user-icon-btn');
+  if (!btn) return;
+  if (connected) {
+    btn.style.background = '#e6f4ea';
+    btn.title = 'Google Drive 接続済み';
+    btn.style.cursor = 'default';
+    btn.querySelector('svg').innerHTML = '<circle cx="12" cy="8" r="4" fill="#389e0d"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#389e0d"/><polyline points="7,13 10,16 17,9" fill="none" stroke="#389e0d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+  } else {
+    btn.style.background = '#e0e0d8';
+    btn.title = 'Googleでサインイン';
+    btn.style.cursor = 'pointer';
+    btn.querySelector('svg').innerHTML = '<circle cx="12" cy="8" r="4" fill="#888"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#888"/>';
+  }
+}
+
+function onUserIconClick() {
+  if (!driveToken) driveSignIn();
+}
+
 function renderDriveBar(connected) {
+  renderUserIcon(connected);
   const bar = document.getElementById('drive-bar');
   if (connected) {
     bar.className = 'drive-bar connected';
