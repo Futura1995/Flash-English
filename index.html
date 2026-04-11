@@ -707,17 +707,37 @@ function prevPhrase() {
 }
 
 // ==================== 音声 ====================
+function getBestEnglishVoice() {
+  const voices = speechSynthesis.getVoices();
+  const preferred = [
+    'Samantha', 'Karen', 'Daniel', 'Moira', 'Tessa', // iOS高品質
+    'Google US English', 'Google UK English Female',   // Android/Chrome
+    'Microsoft Aria', 'Microsoft Jenny', 'Microsoft Guy' // Windows
+  ];
+  for (const name of preferred) {
+    const v = voices.find(v => v.name === name && v.lang.startsWith('en'));
+    if (v) return v;
+  }
+  return voices.find(v => v.lang === 'en-US') || voices.find(v => v.lang.startsWith('en')) || null;
+}
+
+function speakText(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; u.rate = 0.85;
+  const voice = getBestEnglishVoice();
+  if (voice) u.voice = voice;
+  speechSynthesis.speak(u);
+}
+
 function speakModel() {
   const ps = getActivePhrases();
   if (!ps[idx]) return;
-  const u = new SpeechSynthesisUtterance(ps[idx].en);
-  u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.speak(u);
+  speakText(ps[idx].en);
 }
 
 function speakFeedback() {
   if (!lastModelAnswer) return;
-  const u = new SpeechSynthesisUtterance(lastModelAnswer);
-  u.lang = 'en-US'; u.rate = 0.85; speechSynthesis.speak(u);
+  speakText(lastModelAnswer);
 }
 
 function toggleRecord() {
