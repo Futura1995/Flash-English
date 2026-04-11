@@ -357,34 +357,6 @@ const DRIVE_FILENAME = 'eikaiwa_data.json';
 let driveToken = null;
 let driveFileId = null;
 
-function waitForGsi(timeoutMs = 5000) {
-  return new Promise(resolve => {
-    if (typeof google !== 'undefined') { resolve(true); return; }
-    const t = setInterval(() => { if (typeof google !== 'undefined') { clearInterval(t); resolve(true); } }, 200);
-    setTimeout(() => { clearInterval(t); resolve(false); }, timeoutMs);
-  });
-}
-
-async function tryAutoSignIn() {
-  const ok = await waitForGsi();
-  if (!ok) return false;
-  return new Promise(resolve => {
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: DRIVE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
-        callback: async (resp) => {
-          if (resp.error) { resolve(false); return; }
-          driveToken = resp.access_token;
-          renderDriveBar(true);
-          await driveLoad({ silent: true });
-          resolve(true);
-        }
-      });
-      client.requestAccessToken({ prompt: '' });
-    } catch(e) { resolve(false); }
-  });
-}
 
 function driveSignIn() {
   if (typeof google === 'undefined') { alert('Google認証ライブラリの読み込み中です。少し待ってから再度お試しください。'); return; }
@@ -569,12 +541,9 @@ async function driveLoad(opts = {}) {
   renderDeckSelector();
   render();
 
-  // GSI読み込み後にサイレント再認証を試みる
-  tryAutoSignIn().then(signedIn => {
-    if (!signedIn && !localStorage.getItem('login_prompt_dismissed')) {
-      document.getElementById('login-prompt-modal').style.display = 'flex';
-    }
-  });
+  if (!driveToken && !localStorage.getItem('login_prompt_dismissed')) {
+    document.getElementById('login-prompt-modal').style.display = 'flex';
+  }
 })();
 
 // ==================== 日付（午前3時基準） ====================
